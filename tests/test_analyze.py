@@ -1,9 +1,15 @@
 import os
+import shutil
 
 import pytest
 
 from simplified_auction.analyze.prompts import build_prompt, prompt_hash
-from simplified_auction.analyze.providers import AIError, run_api
+from simplified_auction.analyze.providers import (
+    AIError,
+    enriched_path,
+    find_command_code,
+    run_api,
+)
 from simplified_auction.analyze.result import parse_result, semaforo_of
 from simplified_auction.config import AIConfig
 
@@ -58,6 +64,21 @@ def test_run_api_command_code_sem_binario():
     config = AIConfig(provider="command-code", api_key=None, base_url="/nao/existe/cmd")
     with pytest.raises(AIError):
         run_api(config, "prompt", timeout=5)
+
+
+def test_enriched_path_inclui_diretorios_comuns(monkeypatch):
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    parts = enriched_path().split(os.pathsep)
+    assert "/opt/homebrew/bin" in parts
+    assert "/usr/local/bin" in parts
+    assert parts[0] == "/usr/bin"
+
+
+@pytest.mark.skipif(shutil.which("cmd") is None, reason="cmd nao instalado")
+def test_find_command_code_com_path_minimo(monkeypatch):
+    # Simula um app aberto pelo Finder: PATH minimo, sem Homebrew.
+    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+    assert find_command_code() is not None
 
 
 def test_prepare_junta_varios_documentos(tmp_path, monkeypatch):

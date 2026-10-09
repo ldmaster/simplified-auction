@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 import httpx
 
@@ -16,6 +18,36 @@ GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:ge
 
 #: Nome do binario da CLI do Command Code (headless: ``cmd -p``).
 COMMAND_CODE_BIN = "cmd"
+
+#: Diretorios comuns de binarios. Um app aberto pelo Finder no macOS recebe um
+#: PATH minimo (``/usr/bin:/bin:...``) e nao enxerga Homebrew nem ``node``.
+_CANDIDATE_DIRS: tuple[str, ...] = (
+    "/opt/homebrew/bin",
+    "/opt/homebrew/sbin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    str(Path.home() / ".local" / "bin"),
+    str(Path.home() / "bin"),
+    str(Path.home() / ".commandcode" / "bin"),
+)
+
+
+def enriched_path() -> str:
+    """PATH do processo somado aos diretorios comuns de binarios."""
+    parts = [part for part in os.environ.get("PATH", "").split(os.pathsep) if part]
+    for directory in _CANDIDATE_DIRS:
+        if directory not in parts:
+            parts.append(directory)
+    return os.pathsep.join(parts)
+
+
+def find_command_code() -> str | None:
+    """Localiza o binario ``cmd`` (PATH atual e diretorios comuns)."""
+    return shutil.which(COMMAND_CODE_BIN) or shutil.which(
+        COMMAND_CODE_BIN, path=enriched_path()
+    )
+
 
 _DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-5",
@@ -78,7 +110,8 @@ def _command_code(config: AIConfig, model: str, prompt: str, timeout: float) -> 
     """Roda a CLI do Command Code em modo headless (usa a sua assinatura).
 
     O prompt vai por stdin (aguenta texto grande) e a resposta sai do stdout.
-    Roda em um diretorio temporario para o agente nao mexer nos seus arquivos.
+    Roda em um diretorio temporario, com PATH enriquecido (o app aberto pelo
+    Finder nao herda o PATH do shell), para achar tanto ``cmd`` quanto ``node``.
 
     Args:
         config: Configuracao (``base_url`` pode apontar o caminho do binario).
@@ -92,11 +125,13 @@ def _command_code(config: AIConfig, model: str, prompt: str, timeout: float) -> 
     Raises:
         AIError: Binario ausente, timeout ou resposta vazia.
     """
-    binary = config.base_url or shutil.which(COMMAND_CODE_BIN) or COMMAND_CODE_BIN
-    if shutil.which(binary) is None:
+    path = enriched_path()
+    binary = config.base_url or find_command_code()
+    if not binary or shutil.which(binary, path=path) is None:
         raise AIError(
-            "CLI 'cmd' (Command Code) nao encontrada no PATH. Abra o Command Code "
-            "ou informe o caminho do binario no campo base_url."
+            "CLI 'cmd' (Command Code) nao encontrada. Se voce abriu o app pelo "
+            "Finder, informe o caminho completo no campo base_url do provedor "
+            "(ex.: /opt/homebrew/bin/cmd)."
         )
     args = [binary, "-p", "--skip-onboarding", "--max-turns", "4"]
     if model:
@@ -111,6 +146,7 @@ def _command_code(config: AIConfig, model: str, prompt: str, timeout: float) -> 
                 cwd=workdir,
                 timeout=timeout,
                 check=False,
+                env={**os.environ, "PATH": path},
             )
     except subprocess.TimeoutExpired as exc:
         raise AIError(f"Command Code excedeu {timeout:.0f}s.") from exc
