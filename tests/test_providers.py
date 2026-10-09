@@ -2,7 +2,9 @@ import os
 import stat
 
 from simplified_auction import providers
+from simplified_auction.config import AIConfig
 from simplified_auction.providers import (
+    KINDS,
     Provider,
     ProviderBook,
     load_book,
@@ -10,6 +12,17 @@ from simplified_auction.providers import (
     save_book,
     to_ai_config,
 )
+
+
+def test_has_api_para_command_code():
+    assert AIConfig(provider="command-code", api_key=None).has_api is True
+    assert AIConfig(provider="manual", api_key=None).has_api is False
+    assert AIConfig(provider="openai", api_key=None).has_api is False
+    assert AIConfig(provider="openai", api_key="k").has_api is True
+
+
+def test_kinds_inclui_command_code():
+    assert "command-code" in KINDS
 
 
 def test_book_upsert_e_ativo(tmp_path, monkeypatch):

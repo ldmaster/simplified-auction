@@ -1,6 +1,10 @@
-"""Provedores de IA para a analise (Anthropic, OpenAI/compativel, Gemini)."""
+"""Provedores de IA para a analise (Anthropic, OpenAI/compativel, Gemini, CLI)."""
 
 from __future__ import annotations
+
+import shutil
+import subprocess
+import tempfile
 
 import httpx
 
@@ -9,6 +13,9 @@ from ..config import AIConfig
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+#: Nome do binario da CLI do Command Code (headless: ``cmd -p``).
+COMMAND_CODE_BIN = "cmd"
 
 _DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-5",
@@ -32,12 +39,12 @@ def run_api(
     *,
     provider: str | None = None,
     model: str | None = None,
-    timeout: float = 120.0,
+    timeout: float = 300.0,
 ) -> str:
-    """Envia o prompt a um provedor remoto e retorna o texto da resposta.
+    """Envia o prompt a um provedor e retorna o texto da resposta.
 
     Args:
-        config: Configuracao de IA (chave, provedor, base_url).
+        config: Configuracao de IA (provedor, chave, base_url).
         prompt: Prompt completo.
         provider: Sobrescreve o provedor configurado.
         model: Sobrescreve o modelo configurado.
@@ -47,11 +54,13 @@ def run_api(
         O texto da resposta do modelo.
 
     Raises:
-        AIError: Sem chave configurada ou falha na chamada.
+        AIError: Provedor manual, sem chave, ou falha na chamada.
     """
     chosen = (provider or config.provider or "manual").lower()
     if chosen == "manual":
         raise AIError("Provedor 'manual': use o prompt gerado em um chat web.")
+    if chosen == "command-code":
+        return _command_code(config, model or config.model, prompt, timeout)
     if not config.api_key:
         raise AIError("Nenhuma chave de API configurada (defina AUCTION_AI_KEY).")
     model_name = model or config.model or _default_model(chosen)
@@ -63,6 +72,54 @@ def run_api(
         return _openai(config, model_name, prompt, timeout)
     except httpx.HTTPError as exc:
         raise AIError(f"Falha na chamada de IA: {exc}") from exc
+
+
+def _command_code(config: AIConfig, model: str, prompt: str, timeout: float) -> str:
+    """Roda a CLI do Command Code em modo headless (usa a sua assinatura).
+
+    O prompt vai por stdin (aguenta texto grande) e a resposta sai do stdout.
+    Roda em um diretorio temporario para o agente nao mexer nos seus arquivos.
+
+    Args:
+        config: Configuracao (``base_url`` pode apontar o caminho do binario).
+        model: Modelo a usar; vazio usa o modelo atual do Command Code.
+        prompt: Prompt completo.
+        timeout: Timeout em segundos.
+
+    Returns:
+        O texto produzido pela CLI.
+
+    Raises:
+        AIError: Binario ausente, timeout ou resposta vazia.
+    """
+    binary = config.base_url or shutil.which(COMMAND_CODE_BIN) or COMMAND_CODE_BIN
+    if shutil.which(binary) is None:
+        raise AIError(
+            "CLI 'cmd' (Command Code) nao encontrada no PATH. Abra o Command Code "
+            "ou informe o caminho do binario no campo base_url."
+        )
+    args = [binary, "-p", "--skip-onboarding", "--max-turns", "4"]
+    if model:
+        args += ["--model", model]
+    try:
+        with tempfile.TemporaryDirectory(prefix="auction-cc-") as workdir:
+            completed = subprocess.run(
+                args,
+                input=prompt,
+                text=True,
+                capture_output=True,
+                cwd=workdir,
+                timeout=timeout,
+                check=False,
+            )
+    except subprocess.TimeoutExpired as exc:
+        raise AIError(f"Command Code excedeu {timeout:.0f}s.") from exc
+    output = completed.stdout.strip()
+    if not output:
+        lines = (completed.stderr or "").strip().splitlines()
+        detail = lines[-1] if lines else f"exit {completed.returncode}"
+        raise AIError(f"Command Code nao retornou texto ({detail}).")
+    return output
 
 
 def _anthropic(config: AIConfig, model: str, prompt: str, timeout: float) -> str:

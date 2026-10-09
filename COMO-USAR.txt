@@ -54,12 +54,15 @@ Aba "Editais":
   - Liste e baixe os editais publicados (PDF).
 
 Aba "IA":
-  - Cadastre seu provedor de IA (Anthropic/Claude, OpenAI, Gemini ou um
-    endereco compativel). Informe o nome, o tipo, o modelo e a CHAVE de API.
+  - Escolha o "Tipo":
+      * "Command Code (assinatura via CLI)": usa a sua assinatura do Command Code
+        (nao precisa de chave). E o mais simples se voce ja assina.
+      * "Anthropic/OpenAI/Gemini": informe a CHAVE de API.
+      * "Compativel com OpenAI": informe a chave e a URL completa do servico.
   - Clique em "Salvar" e depois em "Testar conexao": aparece "OK" ou o erro.
   - Clique em "Definir como ativo" para o programa usar esse provedor.
-  - A chave fica so no seu computador. Nada e enviado a lugar nenhum alem do
-    proprio provedor que voce escolher.
+  - A chave (quando houver) fica so no seu computador e nada e enviado a lugar
+    nenhum alem do provedor que voce escolher.
 
 ANALISE COM IA
 --------------

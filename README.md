@@ -124,13 +124,27 @@ Cadastre um ou mais provedores pela própria tela (ou pela CLI) e escolha o
 .venv/bin/auction ai list
 .venv/bin/auction ai add --kind anthropic --model claude-sonnet-4-5 --key sk-... --label "Meu Claude"
 .venv/bin/auction ai add --kind openai    --model gpt-4o-mini      --key sk-...
+.venv/bin/auction ai add --kind command-code --label "Command Code"
 .venv/bin/auction ai use <id>
 .venv/bin/auction ai test
 .venv/bin/auction ai rm <id>
 ```
 
-Tipos aceitos: `anthropic`, `openai`, `gemini` e `compatible` (qualquer endpoint
-compatível com OpenAI, informando `--base-url`).
+Tipos aceitos:
+
+| Tipo | Precisa de chave? | Observações |
+| --- | --- | --- |
+| `anthropic` | sim | API da Anthropic (Claude) |
+| `openai` | sim | API da OpenAI |
+| `gemini` | sim | API do Google Gemini |
+| `compatible` | depende | qualquer endpoint OpenAI-compatível; informe o `base_url` **completo** (ex.: `https://api.deepseek.com/chat/completions`) |
+| `command-code` | **não** | usa a **sua assinatura** do Command Code pela CLI (`cmd -p`), rodando na sua máquina |
+
+O tipo `command-code` é ideal para quem tem assinatura e não quer chave de API:
+o app chama `cmd -p` (modo headless, verificado: resposta no stdout, exit 0) com o
+prompt por stdin, em um diretório temporário, e usa o modelo que já estiver ativo
+no Command Code. Cada análise consome o uso do seu plano. Se a CLI não estiver no
+`PATH`, informe o caminho do binário no campo `base_url`.
 
 ### Modo manual (funciona sem provedor)
 

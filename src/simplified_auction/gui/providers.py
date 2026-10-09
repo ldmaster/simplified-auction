@@ -77,10 +77,12 @@ class ProvidersView:
         for index, (text, var, _is_choice) in enumerate(rows):
             ttk.Label(form, text=text).grid(row=index, column=0, sticky="w", padx=6, pady=3)
             if text == "Tipo":
-                ttk.Combobox(
+                combo = ttk.Combobox(
                     form, textvariable=var, values=[kind_label(k) for k in KINDS],
                     state="readonly", width=34,
-                ).grid(row=index, column=1, sticky="w", pady=3)
+                )
+                combo.grid(row=index, column=1, sticky="w", pady=3)
+                combo.bind("<<ComboboxSelected>>", lambda _e: self._update_hint())
             elif text == "Chave":
                 ttk.Entry(form, textvariable=var, width=52, show="*").grid(
                     row=index, column=1, sticky="w", pady=3
@@ -102,13 +104,30 @@ class ProvidersView:
         ttk.Label(
             self.frame,
             text=(
-                "A chave fica apenas no seu computador (providers.json, permissao 0600). "
-                "Sem provedor ativo, o app usa o modo manual (gera o prompt para colar)."
+                "Dicas: 'Command Code (assinatura via CLI)' usa a CLI que voce ja paga "
+                "(sem chave). Nos demais tipos, a chave fica so no seu computador "
+                "(providers.json, permissao 0600). Sem provedor ativo, o app usa o "
+                "modo manual (gera o prompt para colar)."
             ),
             foreground="#666",
             wraplength=900,
             justify="left",
         ).pack(anchor="w", padx=6, pady=(0, 6))
+        self._update_hint()
+
+    def _update_hint(self) -> None:
+        """Atualiza a dica do campo base_url conforme o tipo escolhido."""
+        kind = _KIND_BY_LABEL.get(self.kind.get(), "")
+        if kind == "compatible":
+            self.base_url_hint.configure(
+                text="a URL completa (ex.: https://api.deepseek.com/chat/completions)"
+            )
+        elif kind == "command-code":
+            self.base_url_hint.configure(
+                text="sem chave; base_url = caminho do binario (opcional, padrao: cmd)"
+            )
+        else:
+            self.base_url_hint.configure(text="")
 
     def refresh(self) -> None:
         """Recarrega a lista de provedores."""
@@ -144,6 +163,7 @@ class ProvidersView:
         self.model.set(provider.model)
         self.base_url.set(provider.base_url)
         self.api_key.set(provider.api_key)
+        self._update_hint()
 
     def _new(self) -> None:
         self._editing_id = None
@@ -152,6 +172,7 @@ class ProvidersView:
         self.model.set("")
         self.base_url.set("")
         self.api_key.set("")
+        self._update_hint()
         self.status.configure(text="Preencha e clique em Salvar.", foreground="#666")
 
     def _current(self) -> Provider:
@@ -167,8 +188,8 @@ class ProvidersView:
 
     def _save(self) -> None:
         provider = self._current()
-        if provider.kind != "compatible" and not provider.api_key:
-            messagebox.showwarning("IA", "Informe a chave de API (ou use o tipo compativel).")
+        if provider.kind not in {"compatible", "command-code"} and not provider.api_key:
+            messagebox.showwarning("IA", "Informe a chave de API para este tipo de provedor.")
             return
         book = load_book()
         book.upsert(provider)

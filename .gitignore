@@ -18,3 +18,9 @@ packaging/icon.ico
 packaging/icon.icns
 packaging/icon.iconset/
 packaging/preview_*.png
+
+# Dados locais do app - NUNCA versionar (podem conter chave e dados pessoais)
+providers.json
+*.db
+*.sqlite
+*.sqlite3

@@ -1,3 +1,7 @@
+import os
+
+import pytest
+
 from simplified_auction.analyze.prompts import build_prompt, prompt_hash
 from simplified_auction.analyze.providers import AIError, run_api
 from simplified_auction.analyze.result import parse_result, semaforo_of
@@ -37,3 +41,20 @@ def test_run_api_manual_erro():
         assert "manual" in str(exc).lower()
     else:  # pragma: no cover
         raise AssertionError("esperava AIError")
+
+
+@pytest.mark.skipif(os.name == "nt", reason="script shell")
+def test_run_api_command_code_chama_a_cli(tmp_path):
+    script = tmp_path / "cmd"
+    script.write_text(
+        "#!/bin/sh\ncat > /dev/null\necho '{\"semaforo\": \"verde\"}'\n", encoding="utf-8"
+    )
+    script.chmod(0o755)
+    config = AIConfig(provider="command-code", api_key=None, base_url=str(script))
+    assert run_api(config, "prompt", timeout=30).strip() == '{"semaforo": "verde"}'
+
+
+def test_run_api_command_code_sem_binario():
+    config = AIConfig(provider="command-code", api_key=None, base_url="/nao/existe/cmd")
+    with pytest.raises(AIError):
+        run_api(config, "prompt", timeout=5)

@@ -18,13 +18,14 @@ from . import paths
 from .config import AIConfig
 
 #: Tipos de provedor aceitos no cadastro.
-KINDS: tuple[str, ...] = ("anthropic", "openai", "gemini", "compatible")
+KINDS: tuple[str, ...] = ("anthropic", "openai", "gemini", "compatible", "command-code")
 
 _KIND_LABELS: dict[str, str] = {
     "anthropic": "Anthropic (Claude)",
     "openai": "OpenAI",
     "gemini": "Google Gemini",
     "compatible": "Compativel com OpenAI (base_url)",
+    "command-code": "Command Code (assinatura via CLI)",
 }
 
 

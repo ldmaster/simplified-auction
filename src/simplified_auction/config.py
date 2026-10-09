@@ -66,8 +66,12 @@ class AIConfig:
 
     @property
     def has_api(self) -> bool:
-        """True quando ha provedor remoto configurado com chave."""
-        return self.provider != "manual" and bool(self.api_key)
+        """True quando o provedor roda automaticamente (chave ou CLI local)."""
+        if self.provider == "manual":
+            return False
+        if self.provider == "command-code":
+            return True
+        return bool(self.api_key)
 
 
 @dataclass(frozen=True, slots=True)
