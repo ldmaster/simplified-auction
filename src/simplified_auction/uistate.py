@@ -50,6 +50,9 @@ def save() -> None:
     with contextlib.suppress(OSError):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(_cache, ensure_ascii=False, indent=2), encoding="utf-8")
+        # Pode conter a chave do Google Maps: restringe a leitura ao dono.
+        with contextlib.suppress(OSError):
+            path.chmod(0o600)
 
 
 def get(key: str, default: Any = None) -> Any:
@@ -101,3 +104,23 @@ def last_check_at() -> str | None:
 def set_last_check_at(value: str) -> None:
     """Grava o momento da ultima verificacao de novidades."""
     put("last_check_at", value)
+
+
+def google_maps_key() -> str:
+    """Chave da API do Google Maps (vazia se nao configurada)."""
+    return str(load().get("google_maps_key") or "")
+
+
+def set_google_maps_key(value: str) -> None:
+    """Grava a chave da API do Google Maps."""
+    put("google_maps_key", value.strip())
+
+
+def map_type() -> str:
+    """Tipo de mapa escolhido (roadmap/satellite/hybrid/terrain)."""
+    return str(load().get("map_type") or "roadmap")
+
+
+def set_map_type(value: str) -> None:
+    """Grava o tipo de mapa escolhido."""
+    put("map_type", value)

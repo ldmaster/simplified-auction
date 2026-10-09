@@ -189,10 +189,22 @@ APIs — o oposto do que a Caixa exige.
   Oportunidades). A galeria mostra miniaturas, prévia grande, navegação
   ◀/▶, **Abrir no navegador** e **Salvar como…**. As fotos vêm do
   `/fotos/` (asset estático, sem anti-bot) depois que a ficha é enriquecida.
-- **Mapa:** botões **Google Maps** e **Rota** abrem o endereço no navegador
-  (sem chave de API). Com o extra `maps` instalado, **Localizar no mapa** mostra
-  o imóvel num mapa embutido (tiles do OpenStreetMap), geocodificando via
-  Nominatim com cache no banco (evita repetir a consulta).
+- **Mapa:** dois modos no botão do painel *Localização*:
+  - **Mapa interativo** — OpenStreetMap embutido (tiles `tkintermapview`), grátis
+    e **sem chave**; dá para arrastar e dar zoom.
+  - **Google (no app)** — a imagem do **Google Maps aparece dentro do app**
+    (Maps Static API), com marcador no imóvel e seletor de tipo
+    (*Mapa / Satélite / Híbrido / Relevo*). Precisa de uma chave da API do Google
+    (aba **Config → Google Maps**): habilite **Maps Static API** e o *billing* no
+    projeto do Google Cloud. Cada render é uma requisição da Static Maps.
+  - **Abrir no Google Maps** e **Rota (navegador)** seguem para abrir o navegador
+    (rota turn-by-turn não tem como rodar dentro do Tk).
+
+> Por que a imagem, e não um mapa interativo do Google? O Tkinter **não renderiza
+> página web**, e a Maps Embed API é um `iframe`. Rodar o Google interativo
+> exigiria embutir um motor de navegador (janela separada e ~100 MB). A Maps
+> Static API devolve uma **imagem**, que o Tk exibe nativamente — é o caminho que
+> mantém o app leve e com o mapa do lado de dentro.
 
 ## Análise por IA (híbrida, nunca automática)
 

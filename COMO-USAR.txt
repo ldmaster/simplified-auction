@@ -48,8 +48,14 @@ Aba "Ficha":
     legivel e colorida (semaforo, riscos por gravidade, checklist por status).
     No topo da Ficha aparece um selo com o semaforo da ultima analise.
   - Sub-aba "Fotos & mapa": as fotos do imovel (miniatura, previa grande,
-    anterior/proximo, salvar como) e a localizacao (botoes "Google Maps" e
-    "Rota"; e "Localizar no mapa" mostra o imovel num mapa).
+    anterior/proximo, salvar como) e a localizacao:
+      * "Mapa interativo": mapa gratis (OpenStreetMap) que voce arrasta e da zoom.
+      * "Google (no app)": o mapa do Google aparece DENTRO do programa. Para isso,
+        cole a chave da API do Google em Config > Google Maps (e preciso habilitar
+        "Maps Static API" e o billing no Google Cloud). Escolha o tipo ao lado:
+        Mapa, Satelite, Hibrido ou Relevo.
+      * "Abrir no Google Maps" e "Rota": abrem o navegador (a rota passo a passo
+        nao tem como rodar dentro do programa).
   - Sub-aba "Dados externos": busca dados publicos gratis — endereco oficial do
     CEP e a situacao dos CNPJs que aparecem na matricula (credor/devedor).
   - "Viabilidade": calcule o custo real (comissao, ITBI, reforma, dividas...).

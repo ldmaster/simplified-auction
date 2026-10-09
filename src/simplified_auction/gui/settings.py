@@ -77,6 +77,41 @@ class SettingsView:
             data, text="Apagar dados sincronizados...", command=self._clear_data
         ).pack(anchor="w", padx=6, pady=(0, 6))
 
+        maps = ttk.LabelFrame(self.frame, text="Google Maps (dentro do app)")
+        maps.pack(fill="x", padx=6, pady=6)
+        ttk.Label(
+            maps,
+            text=(
+                "Cole a chave da API do Google Maps (Google Cloud > habilitar "
+                "'Maps Static API' > billing ativo). A chave fica so no seu computador. "
+                "Sem chave, use o mapa interativo (OpenStreetMap), que e gratis."
+            ),
+            foreground="#888",
+            wraplength=900,
+            justify="left",
+        ).pack(anchor="w", padx=6, pady=(6, 4))
+        linha = ttk.Frame(maps)
+        linha.pack(fill="x", padx=6, pady=(0, 6))
+        self.google_key = tk.StringVar(value=state.google_maps_key())
+        ttk.Entry(linha, textvariable=self.google_key, width=54, show="*").pack(side="left")
+        ttk.Button(linha, text="Salvar chave", command=self._save_google_key).pack(
+            side="left", padx=6
+        )
+        ttk.Button(linha, text="Limpar", command=self._clear_google_key).pack(side="left")
+
+    def _save_google_key(self) -> None:
+        state.set_google_maps_key(self.google_key.get())
+        self.app.status.set(
+            "Chave do Google Maps salva."
+            if self.google_key.get().strip()
+            else "Chave do Google Maps removida."
+        )
+
+    def _clear_google_key(self) -> None:
+        self.google_key.set("")
+        state.set_google_maps_key("")
+        self.app.status.set("Chave do Google Maps removida.")
+
     def _toggle_auto_analyze(self) -> None:
         state.set_auto_analyze(self.auto_analyze.get())
         self.app.status.set(
