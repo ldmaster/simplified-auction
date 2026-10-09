@@ -15,6 +15,10 @@ SYSTEM_PROMPT = (
     "use 'nao consta'."
 )
 
+#: Limite de caracteres do texto documental enviado no prompt (dividido entre
+#: os documentos selecionados).
+MAX_DOC_CHARS = 80_000
+
 _JSON_KEYS = """{
   "tipo_leilao": "string",
   "data_leilao": "string",
@@ -41,7 +45,7 @@ def build_prompt(
     detail: dict[str, Any] | None,
     document_text: str,
     *,
-    max_chars: int = 60_000,
+    max_chars: int = MAX_DOC_CHARS,
 ) -> str:
     """Monta o prompt de analise (ficha do imovel + documento + checklist).
 

@@ -69,6 +69,8 @@ ANALISE COM IA
 
 Na aba "Ficha" do imovel, clique em "Analisar com IA".
 
+- Aparece uma lista dos PDFs ja baixados. A MATRICULA do imovel ja vem marcada;
+  se quiser incluir um edital tambem, segure Ctrl (ou Cmd) e clique nele.
 - Se voce cadastrou um provedor (aba "IA"), a analise roda dentro do programa e
   o resultado aparece na hora.
 - Se NAO cadastrou, o programa gera um texto (prompt): voce copia, cola no

@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS analyses (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     imovel_id   TEXT,
     document_id INTEGER,
+    document_ids TEXT,
     provider    TEXT NOT NULL,
     model       TEXT NOT NULL DEFAULT '',
     prompt_hash TEXT NOT NULL DEFAULT '',
@@ -212,7 +213,12 @@ class Store:
         columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(documents)")}
         if "imovel_id" not in columns:
             self._conn.execute("ALTER TABLE documents ADD COLUMN imovel_id TEXT")
-            self._conn.commit()
+        analysis_columns = {
+            row["name"] for row in self._conn.execute("PRAGMA table_info(analyses)")
+        }
+        if "document_ids" not in analysis_columns:
+            self._conn.execute("ALTER TABLE analyses ADD COLUMN document_ids TEXT")
+        self._conn.commit()
 
     def close(self) -> None:
         """Fecha a conexao."""
@@ -764,17 +770,19 @@ class Store:
         prompt_hash: str,
         semaforo: str | None,
         result_json: str,
+        document_ids: list[int] | None = None,
     ) -> int:
         """Guarda o resultado de uma analise por IA."""
+        ids = ",".join(str(value) for value in (document_ids or []))
         cur = self._conn.execute(
             """
             INSERT INTO analyses
-                (imovel_id, document_id, provider, model, prompt_hash, semaforo,
-                 result_json, created_at)
-            VALUES (?,?,?,?,?,?,?,?)
+                (imovel_id, document_id, document_ids, provider, model, prompt_hash,
+                 semaforo, result_json, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?)
             """,
-            (imovel_id, document_id, provider, model, prompt_hash, semaforo,
-             result_json, now_iso()),
+            (imovel_id, document_id, ids or None, provider, model, prompt_hash,
+             semaforo, result_json, now_iso()),
         )
         self._conn.commit()
         return int(cur.lastrowid or 0)

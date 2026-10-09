@@ -16,6 +16,10 @@ def setup(level: int = logging.INFO) -> None:
         level: Nivel minimo do logger raiz.
     """
     global _CONFIGURED
+
+    # Bibliotecas ruidosas: avisos de fonte do pypdf nao interessam ao usuario.
+    logging.getLogger("pypdf").setLevel(logging.ERROR)
+
     if _CONFIGURED:
         return
     root = logging.getLogger()

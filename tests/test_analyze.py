@@ -58,3 +58,76 @@ def test_run_api_command_code_sem_binario():
     config = AIConfig(provider="command-code", api_key=None, base_url="/nao/existe/cmd")
     with pytest.raises(AIError):
         run_api(config, "prompt", timeout=5)
+
+
+def test_prepare_junta_varios_documentos(tmp_path, monkeypatch):
+    from simplified_auction.analyze import prepare
+    from simplified_auction.models import Document
+    from simplified_auction.store import Store
+
+    monkeypatch.setattr(
+        "simplified_auction.analyze.extract_text", lambda path: f"TEXTO:{path.name}"
+    )
+    store = Store(":memory:")
+    for name in ("matricula.pdf", "edital.pdf"):
+        pdf = tmp_path / name
+        pdf.write_bytes(b"%PDF-1.4 fake")
+        doc_id = store.upsert_document(
+            Document(
+                tipo="T", uf="AC", mes=0, ano=0, nome=name,
+                url=f"https://x/{name}", imovel_id="1",
+            )
+        )
+        store.mark_document_downloaded(doc_id, str(pdf), "sha")
+
+    prepared = prepare(store, "1", document_ids=[1, 2])
+    assert prepared.document_ids == [1, 2]
+    assert len(prepared.sources) == 2
+    assert "===== DOCUMENTO: T - matricula.pdf =====" in prepared.prompt
+    assert "TEXTO:edital.pdf" in prepared.prompt
+
+
+def test_prepare_sem_documento_levanta_erro():
+    from simplified_auction.analyze import prepare
+    from simplified_auction.store import Store
+
+    with pytest.raises(AIError):
+        prepare(Store(":memory:"), "1")
+
+
+def test_prepare_dividide_a_cota_entre_documentos(tmp_path, monkeypatch):
+    from simplified_auction.analyze import prepare
+    from simplified_auction.models import Document
+    from simplified_auction.store import Store
+
+    monkeypatch.setattr("simplified_auction.analyze.extract_text", lambda path: "X" * 200_000)
+    store = Store(":memory:")
+    for name in ("a.pdf", "b.pdf"):
+        pdf = tmp_path / name
+        pdf.write_bytes(b"%PDF")
+        doc_id = store.upsert_document(
+            Document(
+                tipo="T", uf="AC", mes=0, ano=0, nome=name,
+                url=f"https://x/{name}", imovel_id="1",
+            )
+        )
+        store.mark_document_downloaded(doc_id, str(pdf), "s")
+
+    prepared = prepare(store, "1", document_ids=[1, 2])
+    assert prepared.truncated is True
+    assert prepared.prompt.count("===== DOCUMENTO") == 2
+    assert prepared.prompt.count("[... truncado em") == 2
+
+
+def test_store_result_grava_document_ids():
+    from simplified_auction.analyze import store_result
+    from simplified_auction.store import Store
+
+    store = Store(":memory:")
+    store_result(
+        store, imovel_id="1", provider="manual", model="", prompt="p",
+        raw='{"semaforo": "verde"}', document_ids=[3, 4],
+    )
+    row = store.analyses_for("1")[0]
+    assert row["document_ids"] == "3,4"
+    assert row["document_id"] == 3

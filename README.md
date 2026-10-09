@@ -149,9 +149,29 @@ no Command Code. Cada análise consome o uso do seu plano. Se a CLI não estiver
 ### Modo manual (funciona sem provedor)
 
 O app monta um prompt com o checklist jurídico (matrícula, ônus, ocupação,
-débitos propter rem, prazos, riscos) + o texto do documento. Você cola no
+débitos propter rem, prazos, riscos) + o texto dos documentos. Você cola no
 ChatGPT/Claude/Gemini web e cola a resposta de volta; o app interpreta o JSON e
 guarda. Sem custo.
+
+### Quais documentos entram na análise
+
+A análise sempre junta a **ficha do imóvel** e os **PDFs que você marcar**. A
+**matrícula do próprio imóvel já vem marcada**; os **editais** (publicações de
+lote, não vinculadas a um imóvel específico) entram se você adicionar.
+
+O texto é dividido igualmente entre os documentos, com teto total de 80.000
+caracteres — cada documento tem sua cota, e o app avisa quando trunca.
+
+```bash
+# usa automaticamente os documentos baixados do imóvel (matrícula)
+.venv/bin/auction analyze 10005120
+
+# ou escolha explicitamente (matrícula + edital)
+.venv/bin/auction analyze 10005120 --documento 1 --documento 3
+```
+
+Na GUI, o diálogo "Analisar com IA" mostra a lista de PDFs baixados com a
+matrícula já selecionada (use Ctrl/Cmd para somar editais).
 
 ### Fallback por ambiente
 

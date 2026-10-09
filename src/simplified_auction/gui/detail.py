@@ -321,41 +321,77 @@ class DetailView:
         if not self.imovel_id:
             messagebox.showinfo("Analise", "Selecione um imovel primeiro.")
             return
-        docs = [d for d in self.app.store.list_documents(limit=200) if d.get("local_path")]
+        docs = [d for d in self.app.store.list_documents(limit=300) if d.get("local_path")]
+        mine = [d for d in docs if str(d.get("imovel_id") or "") == str(self.imovel_id)]
+        others = [d for d in docs if d not in mine]
+        ordered = mine + others
+
         window = tk.Toplevel(self.frame)
         window.title(f"Analise por IA — {self.imovel_id}")
-        window.geometry("900x640")
+        window.geometry("900x680")
 
-        ttk.Label(window, text="Documento (PDF baixado):").pack(anchor="w", padx=6, pady=(6, 0))
-        doc_var = tk.StringVar()
-        options = ["(somente ficha)"] + [f"{d['id']} — {d['nome']}" for d in docs]
-        combo = ttk.Combobox(window, textvariable=doc_var, values=options, width=80, state="readonly")
-        combo.current(0)
-        combo.pack(anchor="w", padx=6)
+        ttk.Label(
+            window,
+            text=(
+                "Documentos a considerar (use Ctrl/Cmd para escolher vários). "
+                "Os do próprio imóvel (matrícula) já vêm marcados:"
+            ),
+        ).pack(anchor="w", padx=6, pady=(6, 0))
+        if not ordered:
+            ttk.Label(
+                window,
+                text="Nenhum PDF baixado ainda — use 'Baixar matricula' ou a aba Editais.",
+                foreground="#b60",
+            ).pack(anchor="w", padx=6)
+        listbox = tk.Listbox(window, selectmode="extended", height=6, exportselection=False)
+        for doc in ordered:
+            same = str(doc.get("imovel_id") or "") == str(self.imovel_id)
+            tag = "deste imovel" if same else str(doc.get("tipo") or "")
+            listbox.insert("end", f"{doc['id']} — {doc['nome']}  [{tag}]")
+        for index, doc in enumerate(ordered):
+            if str(doc.get("imovel_id") or "") == str(self.imovel_id):
+                listbox.selection_set(index)
+        listbox.pack(fill="x", padx=6)
+        chosen = tk.StringVar(value="")
+        ttk.Label(window, textvariable=chosen, foreground="#666").pack(anchor="w", padx=6)
+
+        def selected_ids() -> list[int]:
+            return [int(ordered[i]["id"]) for i in listbox.curselection()]
+
+        def update_chosen() -> None:
+            ids = selected_ids()
+            chosen.set(
+                "selecionados: "
+                + (", ".join(str(value) for value in ids) if ids else "nenhum (só a ficha)")
+            )
+
+        listbox.bind("<<ListboxSelect>>", lambda _event: update_chosen())
+        update_chosen()
 
         ttk.Label(window, text="Prompt / resposta:").pack(anchor="w", padx=6, pady=(6, 0))
         text = scrolledtext.ScrolledText(window, wrap="word")
         text.pack(fill="both", expand=True, padx=6, pady=6)
 
-        def selected_doc_id() -> int | None:
-            value = doc_var.get()
-            if value.startswith("("):
-                return None
-            return int(value.split(" — ")[0])
-
         def build() -> None:
             assert self.imovel_id is not None
+            ids = selected_ids()
             try:
-                if selected_doc_id() is None:
-                    prepared = prepare(self.app.store, self.imovel_id, text="")
-                else:
-                    prepared = prepare(self.app.store, self.imovel_id, document_id=selected_doc_id())
+                prepared = (
+                    prepare(self.app.store, self.imovel_id, document_ids=ids)
+                    if ids
+                    else prepare(self.app.store, self.imovel_id, text="")
+                )
             except AIError as exc:
                 messagebox.showwarning("Analise", str(exc))
                 return
             text.delete("1.0", "end")
             text.insert("1.0", prepared.prompt)
             window.prompt = prepared.prompt  # type: ignore[attr-defined]
+            window.document_ids = prepared.document_ids  # type: ignore[attr-defined]
+            if prepared.sources:
+                self.app.status.set(f"{len(prepared.sources)} documento(s) no prompt.")
+            if prepared.truncated:
+                self.app.status.set("Aviso: texto truncado no limite do prompt.")
 
         def run() -> None:
             prompt = getattr(window, "prompt", text.get("1.0", "end").strip())
@@ -391,9 +427,10 @@ class DetailView:
             if not raw:
                 return
             prompt = getattr(window, "prompt", raw)
+            doc_ids = getattr(window, "document_ids", selected_ids())
             ai = self.app.ai_config()
             _, result = store_result(
-                self.app.store, imovel_id=self.imovel_id, document_id=selected_doc_id(),
+                self.app.store, imovel_id=self.imovel_id, document_ids=doc_ids,
                 provider=ai.provider if ai.has_api else "manual",
                 model=ai.model, prompt=prompt, raw=raw,
             )

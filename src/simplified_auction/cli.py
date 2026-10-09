@@ -106,7 +106,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_analyze = sub.add_parser("analyze", help="Analisa um documento com IA.")
     p_analyze.add_argument("imovel_id")
-    p_analyze.add_argument("--documento", type=int, default=None)
+    p_analyze.add_argument(
+        "--documento", type=int, action="append", default=None,
+        help="ID de documento (repetivel). Sem isso, usa os documentos do imovel.",
+    )
     p_analyze.add_argument("--provider", default=None)
     p_analyze.add_argument("--model", default=None)
     p_analyze.add_argument("--manual", action="store_true", help="So gera o prompt.")
@@ -324,11 +327,27 @@ def _cmd_search(args: argparse.Namespace, cfg: config_module.Config) -> int:
 def _cmd_analyze(args: argparse.Namespace, cfg: config_module.Config) -> int:
     ai = resolve_ai_config()
     with _open_db(cfg) as store:
+        doc_ids: list[int] = list(args.documento or [])
+        if not doc_ids:
+            doc_ids = [
+                int(doc["id"])
+                for doc in store.list_documents(imovel_id=args.imovel_id)
+                if doc.get("local_path")
+            ]
         try:
-            prepared = prepare(store, args.imovel_id, document_id=args.documento)
+            prepared = prepare(store, args.imovel_id, document_ids=doc_ids)
         except AIError as exc:
             print(f"erro: {exc}")
+            print(
+                "dica: baixe a matricula com 'auction matricula' ou editais com "
+                "'auction docs fetch' e tente de novo.",
+                file=sys.stderr,
+            )
             return 1
+        if prepared.sources:
+            print(f"documentos considerados: {'; '.join(prepared.sources)}", file=sys.stderr)
+        if prepared.truncated:
+            print("aviso: texto truncado no limite do prompt.", file=sys.stderr)
         if args.manual or not ai.has_api:
             print(prepared.prompt)
             if args.out:
@@ -337,7 +356,7 @@ def _cmd_analyze(args: argparse.Namespace, cfg: config_module.Config) -> int:
             return 0
         raw = run_api(ai, prepared.prompt, provider=args.provider, model=args.model)
         analysis_id, result = store_result(
-            store, imovel_id=args.imovel_id, document_id=args.documento,
+            store, imovel_id=args.imovel_id, document_ids=prepared.document_ids,
             provider=args.provider or ai.provider, model=args.model or ai.model,
             prompt=prepared.prompt, raw=raw,
         )
