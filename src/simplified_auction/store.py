@@ -794,3 +794,17 @@ class Store:
             (imovel_id,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def analyses_for_document(self, document_id: int) -> list[dict[str, Any]]:
+        """Analises que usaram um documento (como principal ou entre varios)."""
+        marker = f"%,{int(document_id)},%"
+        rows = self._conn.execute(
+            """
+            SELECT * FROM analyses
+            WHERE document_id = ?
+               OR (',' || COALESCE(document_ids, '') || ',') LIKE ?
+            ORDER BY created_at DESC
+            """,
+            (int(document_id), marker),
+        ).fetchall()
+        return [dict(row) for row in rows]

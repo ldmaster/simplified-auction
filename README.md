@@ -107,6 +107,18 @@ prazos, débitos e ocupação. O cabeçalho da Ficha mostra o **selo do semáfor
 última análise, há um seletor para consultar análises anteriores e um botão
 **Ver JSON** para o dado bruto.
 
+As cores se **adaptam ao tema do sistema** (claro/escuro): a paleta é escolhida
+pela luminância real do fundo, então o texto fica legível no modo escuro do macOS.
+
+### Analisar um edital (aba Editais)
+
+Além de listar e baixar as publicações, a aba **Editais** permite analisar o PDF
+direto dali: selecione o documento e clique em **Analisar com IA** (o PDF precisa
+estar baixado). O prompt é o mesmo usado na Ficha, mas **sem a ficha do imóvel** —
+o edital é uma publicação de lote e pode cobrir vários imóveis, então o prompt
+avisa a IA disso e pede para citar o número do imóvel quando aparecer. O
+resultado aparece na sub-aba **Análise IA** da própria aba Editais.
+
 ### Fotos e mapa
 
 - **Fotos:** a ficha lista as fotos do imóvel (contagem também aparece na aba

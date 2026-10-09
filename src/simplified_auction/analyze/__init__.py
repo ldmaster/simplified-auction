@@ -69,7 +69,7 @@ def _combine(store: Store, document_ids: Sequence[int], budget: int) -> tuple[st
 
 def prepare(
     store: Store,
-    imovel_id: str,
+    imovel_id: str | None = None,
     *,
     document_id: int | None = None,
     document_ids: Sequence[int] | None = None,
@@ -79,7 +79,7 @@ def prepare(
 
     Args:
         store: Repositorio.
-        imovel_id: Imovel alvo.
+        imovel_id: Imovel alvo (``None`` para analisar so o documento/edital).
         document_id: Um documento (compatibilidade; equivale a ``document_ids``).
         document_ids: Varios documentos (ex.: matricula + editais).
         text: Texto ja extraido (alternativa aos documentos).
@@ -106,8 +106,8 @@ def prepare(
         budget = max(MAX_DOC_CHARS // len(ids) - 500, 5_000)
         text, names, truncated = _combine(store, ids, budget)
 
-    imovel = store.get_property(imovel_id) or {"imovel_id": imovel_id}
-    detail = store.get_detail(imovel_id)
+    imovel = (store.get_property(imovel_id) or {"imovel_id": imovel_id}) if imovel_id else {}
+    detail = store.get_detail(imovel_id) if imovel_id else None
     prompt = build_prompt(imovel, detail, text)
     return PreparedPrompt(
         prompt=prompt,
@@ -122,7 +122,7 @@ def prepare(
 def store_result(
     store: Store,
     *,
-    imovel_id: str,
+    imovel_id: str | None,
     provider: str,
     model: str,
     prompt: str,

@@ -55,6 +55,8 @@ Aba "Pipeline":
 
 Aba "Editais":
   - Liste e baixe os editais publicados (PDF).
+  - Selecione um edital ja baixado e clique em "Analisar com IA" para a IA ler o
+    edital (a analise aparece na sub-aba "Analise IA" desta mesma aba).
 
 Aba "IA":
   - Escolha o "Tipo":

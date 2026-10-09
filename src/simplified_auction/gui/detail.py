@@ -7,13 +7,14 @@ import webbrowser
 from tkinter import messagebox, scrolledtext, ttk
 from typing import TYPE_CHECKING, Any
 
-from ..analyze import AIError, prepare, run_api, store_result
 from ..models import STAGE_LABELS, STAGES
 from ..sources.caixa_detail import fetch_detail
 from ..viability import ViabilityInput, compute
 from .analysis import AnalysisView
+from .analyze_dialog import open_analyze_dialog
 from .maps import MapPanel
 from .photos import PhotoGallery
+from .theme import semaforo_colors
 
 if TYPE_CHECKING:
     from .app import AuctionApp
@@ -144,14 +145,14 @@ class DetailView:
         self._load_pipeline()
         self._load_checklist()
         self._prefill_viability(row)
-        self.analysis_view.set_imovel(imovel_id)
+        self.analysis_view.set_scope(imovel_id=imovel_id)
         self._update_semaforo_badge()
         self.gallery.set_urls(list((self._detail or {}).get("fotos") or []))
         self.map_panel.set_property(row, self._detail)
 
     def _update_semaforo_badge(self) -> None:
         """Pinta o selo de semaforo da analise mais recente no cabecalho."""
-        cores = {"verde": "#1e9e5a", "amarelo": "#c98a00", "vermelho": "#c0392b"}
+        cores = semaforo_colors()
         semaforo = self.analysis_view.latest_semaforo()
         if semaforo in cores:
             self.semaforo_label.configure(
@@ -341,130 +342,12 @@ class DetailView:
         if not self.imovel_id:
             messagebox.showinfo("Analise", "Selecione um imovel primeiro.")
             return
-        docs = [d for d in self.app.store.list_documents(limit=300) if d.get("local_path")]
-        mine = [d for d in docs if str(d.get("imovel_id") or "") == str(self.imovel_id)]
-        others = [d for d in docs if d not in mine]
-        ordered = mine + others
+        open_analyze_dialog(self.app, imovel_id=self.imovel_id, on_saved=self._on_analysis_saved)
 
-        window = tk.Toplevel(self.frame)
-        window.title(f"Analise por IA — {self.imovel_id}")
-        window.geometry("900x680")
+    def _on_analysis_saved(self) -> None:
+        self.analysis_view.set_scope(imovel_id=self.imovel_id)
+        self._update_semaforo_badge()
+        self.media_tabs.select(self.analysis_view.frame)
+        self.app.notebook.select(self.frame)
 
-        ttk.Label(
-            window,
-            text=(
-                "Documentos a considerar (use Ctrl/Cmd para escolher vários). "
-                "Os do próprio imóvel (matrícula) já vêm marcados:"
-            ),
-        ).pack(anchor="w", padx=6, pady=(6, 0))
-        if not ordered:
-            ttk.Label(
-                window,
-                text="Nenhum PDF baixado ainda — use 'Baixar matricula' ou a aba Editais.",
-                foreground="#b60",
-            ).pack(anchor="w", padx=6)
-        listbox = tk.Listbox(window, selectmode="extended", height=6, exportselection=False)
-        for doc in ordered:
-            same = str(doc.get("imovel_id") or "") == str(self.imovel_id)
-            tag = "deste imovel" if same else str(doc.get("tipo") or "")
-            listbox.insert("end", f"{doc['id']} — {doc['nome']}  [{tag}]")
-        for index, doc in enumerate(ordered):
-            if str(doc.get("imovel_id") or "") == str(self.imovel_id):
-                listbox.selection_set(index)
-        listbox.pack(fill="x", padx=6)
-        chosen = tk.StringVar(value="")
-        ttk.Label(window, textvariable=chosen, foreground="#666").pack(anchor="w", padx=6)
-
-        def selected_ids() -> list[int]:
-            return [int(ordered[i]["id"]) for i in listbox.curselection()]
-
-        def update_chosen() -> None:
-            ids = selected_ids()
-            chosen.set(
-                "selecionados: "
-                + (", ".join(str(value) for value in ids) if ids else "nenhum (só a ficha)")
-            )
-
-        listbox.bind("<<ListboxSelect>>", lambda _event: update_chosen())
-        update_chosen()
-
-        ttk.Label(window, text="Prompt / resposta:").pack(anchor="w", padx=6, pady=(6, 0))
-        text = scrolledtext.ScrolledText(window, wrap="word")
-        text.pack(fill="both", expand=True, padx=6, pady=6)
-
-        def build() -> None:
-            assert self.imovel_id is not None
-            ids = selected_ids()
-            try:
-                prepared = (
-                    prepare(self.app.store, self.imovel_id, document_ids=ids)
-                    if ids
-                    else prepare(self.app.store, self.imovel_id, text="")
-                )
-            except AIError as exc:
-                messagebox.showwarning("Analise", str(exc))
-                return
-            text.delete("1.0", "end")
-            text.insert("1.0", prepared.prompt)
-            window.prompt = prepared.prompt  # type: ignore[attr-defined]
-            window.document_ids = prepared.document_ids  # type: ignore[attr-defined]
-            if prepared.sources:
-                self.app.status.set(f"{len(prepared.sources)} documento(s) no prompt.")
-            if prepared.truncated:
-                self.app.status.set("Aviso: texto truncado no limite do prompt.")
-
-        def run() -> None:
-            prompt = getattr(window, "prompt", text.get("1.0", "end").strip())
-            ai = self.app.ai_config()
-            if not ai.has_api:
-                window.clipboard_clear()
-                window.clipboard_append(prompt)
-                messagebox.showinfo(
-                    "Modo manual",
-                    "Prompt copiado. Cole no ChatGPT/Claude web e traga a resposta "
-                    "para ca (cole abaixo e clique em 'Salvar analise').",
-                )
-                return
-            def work() -> Any:
-                return run_api(ai, prompt)
-
-            def done(result: Any) -> None:
-                if isinstance(result, Exception):
-                    self.app.status.set(f"Falhou a chamada de IA: {result}")
-                    messagebox.showerror(
-                        "IA", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
-                    )
-                    return
-                text.delete("1.0", "end")
-                text.insert("1.0", str(result))
-                self.app.status.set("Resposta recebida. Revise e salve.")
-
-            self.app.run_async(work, done, label="Consultando a IA")
-
-        def save() -> None:
-            assert self.imovel_id is not None
-            raw = text.get("1.0", "end").strip()
-            if not raw:
-                return
-            prompt = getattr(window, "prompt", raw)
-            doc_ids = getattr(window, "document_ids", selected_ids())
-            ai = self.app.ai_config()
-            _, result = store_result(
-                self.app.store, imovel_id=self.imovel_id, document_ids=doc_ids,
-                provider=ai.provider if ai.has_api else "manual",
-                model=ai.model, prompt=prompt, raw=raw,
-            )
-            self.app.status.set(f"Analise salva: semaforo {result.get('semaforo', 'n/d')}.")
-            self.analysis_view.set_imovel(self.imovel_id)
-            self._update_semaforo_badge()
-            self.media_tabs.select(self.analysis_view.frame)
-            self.app.notebook.select(self.frame)
-            window.destroy()
-
-        buttons = ttk.Frame(window)
-        buttons.pack(fill="x", padx=6, pady=(0, 6))
-        ttk.Button(buttons, text="Gerar prompt", command=build).pack(side="left")
-        ttk.Button(buttons, text="Copiar / Enviar API", command=run).pack(side="left", padx=4)
-        ttk.Button(buttons, text="Salvar analise", command=save).pack(side="left")
-        ttk.Button(buttons, text="Fechar", command=window.destroy).pack(side="right")
 

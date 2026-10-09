@@ -61,22 +61,30 @@ def build_prompt(
     detail = detail or {}
     checklist = "\n".join(f"{i + 1}. {item}" for i, item in enumerate(DUE_DILIGENCE_ITEMS))
     snippet = document_text[:max_chars]
-    header = (
-        "DADOS DO IMOVEL (catalogo Caixa):\n"
-        f"- id: {_fmt(imovel.get('imovel_id'))}\n"
-        f"- cidade/UF: {_fmt(imovel.get('cidade'))}/{_fmt(imovel.get('uf'))}\n"
-        f"- bairro: {_fmt(imovel.get('bairro'))}\n"
-        f"- tipo: {_fmt(imovel.get('tipo'))}\n"
-        f"- modalidade de venda: {_fmt(imovel.get('modalidade'))}\n"
-        f"- preco: {_fmt(imovel.get('preco'))}\n"
-        f"- valor de avaliacao: {_fmt(imovel.get('valor_avaliacao'))}\n"
-        f"- desconto (%): {_fmt(imovel.get('desconto'))}\n"
-        f"- descricao: {_fmt(imovel.get('descricao'))}\n"
-        f"- matricula: {_fmt(detail.get('matricula'))}\n"
-        f"- comarca: {_fmt(detail.get('comarca'))}\n"
-        f"- formas de pagamento (ficha): {_fmt(detail.get('formas_pagamento'))}\n"
-        f"- regras de despesas (ficha): {_fmt(detail.get('regras_despesas'))}\n"
-    )
+    if imovel.get("imovel_id"):
+        header = (
+            "DADOS DO IMOVEL (catalogo Caixa):\n"
+            f"- id: {_fmt(imovel.get('imovel_id'))}\n"
+            f"- cidade/UF: {_fmt(imovel.get('cidade'))}/{_fmt(imovel.get('uf'))}\n"
+            f"- bairro: {_fmt(imovel.get('bairro'))}\n"
+            f"- tipo: {_fmt(imovel.get('tipo'))}\n"
+            f"- modalidade de venda: {_fmt(imovel.get('modalidade'))}\n"
+            f"- preco: {_fmt(imovel.get('preco'))}\n"
+            f"- valor de avaliacao: {_fmt(imovel.get('valor_avaliacao'))}\n"
+            f"- desconto (%): {_fmt(imovel.get('desconto'))}\n"
+            f"- descricao: {_fmt(imovel.get('descricao'))}\n"
+            f"- matricula: {_fmt(detail.get('matricula'))}\n"
+            f"- comarca: {_fmt(detail.get('comarca'))}\n"
+            f"- formas de pagamento (ficha): {_fmt(detail.get('formas_pagamento'))}\n"
+            f"- regras de despesas (ficha): {_fmt(detail.get('regras_despesas'))}\n"
+        )
+    else:
+        header = (
+            "ANALISE DE PUBLICACAO (edital/aviso) SEM IMOVEL VINCULADO:\n"
+            "- o documento e uma publicacao de lote e pode cobrir varios imoveis;\n"
+            "- nao ha ficha de imovel; use 'nao consta' quando o dado nao existir e\n"
+            "  cite o numero do imovel quando o documento mencionar algum.\n"
+        )
     body = (
         "\nCHECKLIST DE DUE DILIGENCE A RESPONDER:\n"
         f"{checklist}\n"

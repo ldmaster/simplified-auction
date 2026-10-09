@@ -152,3 +152,36 @@ def test_store_result_grava_document_ids():
     row = store.analyses_for("1")[0]
     assert row["document_ids"] == "3,4"
     assert row["document_id"] == 3
+
+
+def test_prepare_so_documento_sem_imovel(tmp_path, monkeypatch):
+    from simplified_auction.analyze import prepare
+    from simplified_auction.models import Document
+    from simplified_auction.store import Store
+
+    monkeypatch.setattr("simplified_auction.analyze.extract_text", lambda path: "TEXTO EDITAL")
+    store = Store(":memory:")
+    pdf = tmp_path / "e.pdf"
+    pdf.write_bytes(b"%PDF")
+    doc_id = store.upsert_document(
+        Document(tipo="Edital", uf="AC", mes=10, ano=2026, nome="e.pdf", url="https://x/e.pdf")
+    )
+    store.mark_document_downloaded(doc_id, str(pdf), "s")
+
+    prepared = prepare(store, None, document_ids=[doc_id])
+    assert "SEM IMOVEL VINCULADO" in prepared.prompt
+    assert "TEXTO EDITAL" in prepared.prompt
+    assert prepared.document_ids == [doc_id]
+
+
+def test_analyses_for_document():
+    from simplified_auction.analyze import store_result
+    from simplified_auction.store import Store
+
+    store = Store(":memory:")
+    store_result(
+        store, imovel_id=None, provider="manual", model="", prompt="p",
+        raw='{"semaforo": "verde"}', document_ids=[7, 9],
+    )
+    assert len(store.analyses_for_document(9)) == 1
+    assert store.analyses_for_document(99) == []

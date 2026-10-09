@@ -8,59 +8,19 @@ from tkinter import messagebox, scrolledtext, ttk
 from typing import TYPE_CHECKING, Any
 
 from ..analyze.render import Block, render
+from .theme import is_dark, palette, tag_options
 
 if TYPE_CHECKING:
     from .app import AuctionApp
 
-#: Estilo de cada tag usada pelos blocos.
-TAG_STYLE: dict[str, dict[str, Any]] = {
-    "h1": {"font": ("", 15, "bold")},
-    "h2": {
-        "font": ("", 11, "bold"),
-        "foreground": "#0d2847",
-        "spacing1": 10,
-        "spacing3": 3,
-    },
-    "bullet": {"lmargin1": 16, "lmargin2": 30},
-    "muted": {"foreground": "#666666", "lmargin2": 30},
-    "mono": {"font": ("Menlo", 10), "foreground": "#333333"},
-    "semaforo_verde": {
-        "background": "#1e9e5a",
-        "foreground": "white",
-        "font": ("", 12, "bold"),
-        "spacing1": 6,
-        "spacing3": 6,
-    },
-    "semaforo_amarelo": {
-        "background": "#c98a00",
-        "foreground": "white",
-        "font": ("", 12, "bold"),
-        "spacing1": 6,
-        "spacing3": 6,
-    },
-    "semaforo_vermelho": {
-        "background": "#c0392b",
-        "foreground": "white",
-        "font": ("", 12, "bold"),
-        "spacing1": 6,
-        "spacing3": 6,
-    },
-    "risco_alta": {"foreground": "#c0392b", "font": ("", 11, "bold"), "spacing1": 6},
-    "risco_media": {"foreground": "#a9750a", "font": ("", 11, "bold"), "spacing1": 6},
-    "risco_baixa": {"foreground": "#2c6e9b", "font": ("", 11, "bold"), "spacing1": 6},
-    "status_ok": {"foreground": "#1e9e5a", "font": ("", 11, "bold"), "spacing1": 4},
-    "status_atencao": {"foreground": "#a9750a", "font": ("", 11, "bold"), "spacing1": 4},
-    "status_critico": {"foreground": "#c0392b", "font": ("", 11, "bold"), "spacing1": 4},
-    "status_nao_consta": {"foreground": "#888888", "font": ("", 11, "bold"), "spacing1": 4},
-}
-
 
 class AnalysisView:
-    """Mostra as analises ja feitas para o imovel, com destaque por cor."""
+    """Mostra as analises ja feitas (de um imovel ou de um documento)."""
 
     def __init__(self, parent: Any, app: AuctionApp) -> None:
         self.app = app
         self.imovel_id: str | None = None
+        self.document_id: int | None = None
         self._rows: list[dict[str, Any]] = []
         self.frame = ttk.Frame(parent)
         self._build()
@@ -80,25 +40,42 @@ class AnalysisView:
 
         self.text = scrolledtext.ScrolledText(self.frame, wrap="word", padx=10, pady=8)
         self.text.pack(fill="both", expand=True, padx=4, pady=(0, 4))
-        for tag, options in TAG_STYLE.items():
+        dark = self._detect_dark()
+        colors = palette(dark)
+        self.text.configure(foreground=colors["body"], insertbackground=colors["body"])
+        for tag, options in tag_options(dark).items():
             self.text.tag_configure(tag, **options)
         self.text.configure(state="disabled")
 
+    def _detect_dark(self) -> bool:
+        """Detecta se o tema do sistema e escuro (pela cor de fundo real)."""
+        try:
+            background = str(self.text.cget("background"))
+            red, green, blue = self.text.winfo_rgb(background)
+        except tk.TclError:
+            return False
+        return is_dark((int(red / 257), int(green / 257), int(blue / 257)))
+
     # ------------------------------------------------------------------ dados
 
-    def set_imovel(self, imovel_id: str | None) -> None:
-        """Aponta a visao para um imovel e recarrega."""
+    def set_scope(self, *, imovel_id: str | None = None, document_id: int | None = None) -> None:
+        """Aponta a visao para um imovel ou um documento e recarrega."""
         self.imovel_id = imovel_id
+        self.document_id = document_id
         self.refresh()
 
     def refresh(self) -> None:
-        """Recarrega as analises do imovel e exibe a mais recente."""
-        self._rows = (
-            self.app.store.analyses_for(self.imovel_id) if self.imovel_id else []
-        )
-        labels = [
-            self._label(row, index) for index, row in enumerate(self._rows)
-        ]
+        """Recarrega as analises do escopo atual e exibe a mais recente."""
+        empty = "Nenhuma analise ainda."
+        if self.imovel_id:
+            self._rows = self.app.store.analyses_for(self.imovel_id)
+            empty = "Nenhuma analise para este imovel."
+        elif self.document_id is not None:
+            self._rows = self.app.store.analyses_for_document(self.document_id)
+            empty = "Nenhuma analise para este documento."
+        else:
+            self._rows = []
+        labels = [self._label(row, index) for index, row in enumerate(self._rows)]
         self.combo.configure(values=labels)
         if labels:
             self.combo.current(0)
@@ -107,10 +84,10 @@ class AnalysisView:
             self.choice.set("(nenhuma analise ainda)")
             self._render_blocks(
                 [
-                    Block("Nenhuma analise para este imovel.", "h2"),
+                    Block(empty, "h2"),
                     Block(
-                        "Use o botao 'Analisar com IA' acima: escolha os documentos "
-                        "(a matricula ja vem marcada) e rode a analise.",
+                        "Use o botao 'Analisar com IA': escolha os documentos e rode a "
+                        "analise (ou gere o prompt para colar em um chat web).",
                         "muted",
                     ),
                 ]
