@@ -51,6 +51,7 @@ class ProvidersView:
         ttk.Button(side, text="Novo", command=self._new).pack(fill="x", pady=2)
         ttk.Button(side, text="Definir como ativo", command=self._activate).pack(fill="x", pady=2)
         ttk.Button(side, text="Remover", command=self._remove).pack(fill="x", pady=2)
+        ttk.Button(side, text="Recarregar", command=self.refresh).pack(fill="x", pady=2)
 
         form = ttk.LabelFrame(self.frame, text="Provedor")
         form.pack(fill="x", padx=6, pady=(0, 6))
@@ -60,7 +61,11 @@ class ProvidersView:
         self.model = tk.StringVar()
         self.base_url = tk.StringVar()
         self.api_key = tk.StringVar()
-        self.base_url_hint = ttk.Label(form, text="", foreground="#888")
+        self.base_url_hint = ttk.Label(
+            form,
+            text="para 'Compativel', a URL completa (ex.: https://api.deepseek.com/chat/completions)",
+            foreground="#888",
+        )
 
         rows = (
             ("Nome", self.label, False),
