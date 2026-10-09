@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from . import paths
+from . import __version__, paths
 
 #: User-Agent padrao. O WAF da Caixa pontua o conjunto de cabecalhos e bloqueia
 #: clientes que nao parecem navegador (inclusive UAs com o nome do app); por
@@ -14,6 +14,12 @@ from . import paths
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
+#: User-Agent honesto para APIs publicas (a BrasilAPI recusa fingerprint de navegador).
+PLAIN_USER_AGENT = (
+    f"simplified-auction/{__version__} "
+    "(+https://github.com/ldmaster/simplified-auction)"
 )
 
 
@@ -53,6 +59,22 @@ class HttpConfig:
     retries: int = 3
     backoff: float = 1.5
     browser: bool = False
+    browser_fingerprint: bool = True
+
+
+def external_http_config(base: HttpConfig) -> HttpConfig:
+    """Configuracao para APIs publicas (sem fingerprint de navegador).
+
+    A BrasilAPI responde 403 a cabecalhos de navegador; ja a Caixa exige o
+    oposto. Entao cada grupo de fontes usa o cliente adequado.
+
+    Args:
+        base: Configuracao base (timeouts e intervalo).
+
+    Returns:
+        A configuracao ajustada para APIs abertas.
+    """
+    return replace(base, user_agent=PLAIN_USER_AGENT, browser_fingerprint=False)
 
 
 @dataclass(frozen=True, slots=True)

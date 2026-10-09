@@ -13,6 +13,71 @@ if TYPE_CHECKING:
     from .app import AuctionApp
 
 
+def auto_analyze(
+    app: AuctionApp,
+    *,
+    imovel_id: str | None = None,
+    document_ids: list[int] | None = None,
+    on_saved: Callable[[], None] | None = None,
+) -> None:
+    """Monta o prompt, chama a IA e salva o resultado — sem cliques extras.
+
+    Sem provedor de IA ativo, cai no dialogo (modo manual).
+
+    Args:
+        app: Aplicacao.
+        imovel_id: Imovel alvo (ou ``None`` para uma publicacao).
+        document_ids: Documentos a analisar; sem eles usa os do imovel.
+        on_saved: Callback chamada apos salvar.
+    """
+    ai = app.ai_config()
+    if not ai.has_api:
+        messagebox.showinfo(
+            "Analise",
+            "A analise automatica precisa de um provedor de IA ativo (aba IA). "
+            "Abrindo o modo manual.",
+        )
+        open_analyze_dialog(
+            app, imovel_id=imovel_id, preselect=document_ids, on_saved=on_saved
+        )
+        return
+
+    ids = list(document_ids or [])
+    if not ids and imovel_id:
+        ids = [
+            int(doc["id"])
+            for doc in app.store.list_documents(imovel_id=imovel_id)
+            if doc.get("local_path")
+        ]
+    try:
+        prepared = (
+            prepare(app.store, imovel_id, document_ids=ids)
+            if ids
+            else prepare(app.store, imovel_id, text="")
+        )
+    except AIError as exc:
+        messagebox.showwarning("Analise", str(exc))
+        return
+
+    def work() -> Any:
+        return run_api(ai, prepared.prompt)
+
+    def done(result: Any) -> None:
+        if isinstance(result, Exception):
+            app.status.set(f"Falhou a analise automatica: {result}")
+            messagebox.showerror("IA", f"{result}\n\nDetalhes no log:\n{app.log_path()}")
+            return
+        _, parsed = store_result(
+            app.store, imovel_id=imovel_id, document_ids=prepared.document_ids,
+            provider=ai.provider, model=ai.model, prompt=prepared.prompt, raw=str(result),
+        )
+        app.status.set(f"Analise automatica salva: semaforo {parsed.get('semaforo', 'n/d')}.")
+        if on_saved is not None:
+            on_saved()
+
+    app.run_async(work, done, label="Analisando com IA")
+
+
 def _order_documents(app: AuctionApp, imovel_id: str | None) -> list[dict[str, Any]]:
     """PDFs baixados; os do imovel escolhido vem primeiro."""
     docs = [doc for doc in app.store.list_documents(limit=500) if doc.get("local_path")]

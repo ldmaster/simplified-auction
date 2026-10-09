@@ -36,8 +36,12 @@ class HttpClient:
             config: Parametros de rede; usa os padroes se omitido.
         """
         self._config = config or HttpConfig()
+        if self._config.browser_fingerprint:
+            headers = browser_headers(self._config.user_agent)
+        else:
+            headers = {"User-Agent": self._config.user_agent, "Accept": "application/json"}
         self._client = httpx.Client(
-            headers=browser_headers(self._config.user_agent),
+            headers=headers,
             timeout=self._config.timeout,
             follow_redirects=True,
         )

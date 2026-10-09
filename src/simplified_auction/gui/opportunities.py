@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..scoring import with_score
 from ..sources.caixa_csv import UFS
+from . import state
 
 if TYPE_CHECKING:
     from .app import AuctionApp
@@ -49,8 +50,16 @@ class OpportunitiesView:
         self.uf = tk.StringVar()
         self.min_desc = tk.StringVar()
         self.text = tk.StringVar()
+        self._restore_filters()
         self._build()
         self.refresh()
+
+    def _restore_filters(self) -> None:
+        """Restaura os ultimos filtros usados."""
+        saved = state.filters("oportunidades")
+        self.uf.set(str(saved.get("uf", "")))
+        self.min_desc.set(str(saved.get("min_desconto", "")))
+        self.text.set(str(saved.get("text", "")))
 
     def _build(self) -> None:
         filters = ttk.Frame(self.frame)
@@ -91,6 +100,14 @@ class OpportunitiesView:
 
     def refresh(self) -> None:
         """Recarrega a tabela com os filtros atuais."""
+        state.save_filters(
+            "oportunidades",
+            {
+                "uf": self.uf.get().strip(),
+                "min_desconto": self.min_desc.get().strip(),
+                "text": self.text.get().strip(),
+            },
+        )
         rows = with_score(self.app.store.list_properties(**self._filters()))
         self.tree.delete(*self.tree.get_children())
         for row in rows:

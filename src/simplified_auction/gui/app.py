@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import queue
 import threading
 import time
@@ -38,11 +39,13 @@ class AuctionApp:
         self.cfg = cfg
         self.store = Store(cfg.db_path)
         self.status = tk.StringVar(value="Pronto.")
-        self.progress = tk.StringVar(value="")
         self._queue: queue.Queue[tuple[Callable[[Any], None], Any]] = queue.Queue()
         self._busy = False
         self._busy_start = 0.0
         self._busy_label = ""
+        self._progress_win: tk.Toplevel | None = None
+        self._progress_title = tk.StringVar(value="")
+        self._progress_detail = tk.StringVar(value="")
         self._build()
         self.refresh_counts()
         self.root.after(100, self._poll)
@@ -69,9 +72,6 @@ class AuctionApp:
         bar.pack(fill="x", side="bottom")
         ttk.Label(bar, textvariable=self.status, anchor="w").pack(
             side="left", fill="x", expand=True, padx=4
-        )
-        ttk.Label(bar, textvariable=self.progress, anchor="e", foreground="#b60").pack(
-            side="right", padx=4
         )
 
     def log_path(self) -> str:
@@ -108,7 +108,8 @@ class AuctionApp:
         self._busy_label = label
         self._busy_start = time.monotonic()
         self.status.set(f"{label}...")
-        self._update_progress()
+        # O modal so aparece se a operacao demorar (evita piscar em acoes rapidas).
+        self.root.after(350, self._delayed_progress)
 
         def worker() -> None:
             try:
@@ -119,14 +120,54 @@ class AuctionApp:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _delayed_progress(self) -> None:
+        """Abre o modal de progresso se a operacao ainda estiver rodando."""
+        if self._busy and self._progress_win is None:
+            self._show_progress(self._busy_label)
+            self._update_progress()
+
+    def _show_progress(self, label: str) -> None:
+        """Abre a janela modal com a barra de progresso."""
+        window = tk.Toplevel(self.root)
+        window.title("Processando")
+        window.resizable(False, False)
+        window.transient(self.root)
+        frame = ttk.Frame(window, padding=18)
+        frame.pack(fill="both", expand=True)
+        self._progress_title.set(label)
+        self._progress_detail.set("iniciando...")
+        ttk.Label(frame, textvariable=self._progress_title, font=("", 12, "bold")).pack(anchor="w")
+        ttk.Label(frame, textvariable=self._progress_detail, foreground="#888").pack(
+            anchor="w", pady=(2, 12)
+        )
+        bar = ttk.Progressbar(frame, mode="indeterminate", length=360)
+        bar.pack()
+        bar.start(60)
+        self._progress_bar = bar
+        window.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - window.winfo_width()) // 2
+        y = self.root.winfo_rooty() + (self.root.winfo_height() - window.winfo_height()) // 3
+        window.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        with contextlib.suppress(tk.TclError):
+            window.grab_set()
+        self._progress_win = window
+
     def _update_progress(self) -> None:
-        """Mantem o contador de tempo visivel enquanto ha operacao em background."""
+        """Atualiza o contador de tempo do modal enquanto a operacao roda."""
         if not self._busy:
-            self.progress.set("")
             return
         elapsed = int(time.monotonic() - self._busy_start)
-        self.progress.set(f"aguarde... {elapsed}s")
+        self._progress_detail.set(f"aguarde... {elapsed}s")
         self.root.after(250, self._update_progress)
+
+    def _hide_progress(self) -> None:
+        """Fecha o modal de progresso, se estiver aberto."""
+        if self._progress_win is not None:
+            with contextlib.suppress(tk.TclError):
+                self._progress_bar.stop()
+                self._progress_win.grab_release()
+                self._progress_win.destroy()
+            self._progress_win = None
 
     def _poll(self) -> None:
         """Entrega os resultados das threads na thread principal do Tk."""
@@ -134,7 +175,7 @@ class AuctionApp:
             while True:
                 callback, result = self._queue.get_nowait()
                 self._busy = False
-                self.progress.set("")
+                self._hide_progress()
                 callback(result)
         except queue.Empty:
             pass

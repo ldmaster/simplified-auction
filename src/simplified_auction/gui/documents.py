@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING, Any
 from ..models import DOCUMENT_TYPES
 from ..sources import caixa_docs
 from ..sources.caixa_csv import UFS
+from . import state
 from .analysis import AnalysisView
-from .analyze_dialog import open_analyze_dialog
+from .analyze_dialog import auto_analyze, open_analyze_dialog
 
 if TYPE_CHECKING:
     from .app import AuctionApp
@@ -35,6 +36,12 @@ class DocumentsView:
         self.ano = tk.StringVar(value="2026")
         self.mes = tk.StringVar(value="10")
         self.tipo = tk.StringVar(value="9")
+        saved = state.filters("editais")
+        if saved:
+            self.uf.set(str(saved.get("uf", self.uf.get())))
+            self.ano.set(str(saved.get("ano", self.ano.get())))
+            self.mes.set(str(saved.get("mes", self.mes.get())))
+            self.tipo.set(str(saved.get("tipo", self.tipo.get())))
         self._build()
         self.refresh()
 
@@ -127,6 +134,13 @@ class DocumentsView:
             return
         doc_id = int(document["id"])
         self.analysis_view.set_scope(document_id=doc_id)
+        if state.auto_analyze():
+            auto_analyze(
+                self.app,
+                document_ids=[doc_id],
+                on_saved=lambda: self._on_analysis_saved(doc_id),
+            )
+            return
         open_analyze_dialog(
             self.app,
             preselect=[doc_id],
@@ -138,7 +152,17 @@ class DocumentsView:
         self.notebook.select(self.analysis_view.frame)
 
     def _params(self) -> tuple[str, int, int, str]:
-        return self.uf.get(), int(self.ano.get() or 0), int(self.mes.get() or 0), self.tipo.get()
+        uf, ano, mes, tipo = (
+            self.uf.get(),
+            int(self.ano.get() or 0),
+            int(self.mes.get() or 0),
+            self.tipo.get(),
+        )
+        state.save_filters(
+            "editais",
+            {"uf": uf, "ano": self.ano.get().strip(), "mes": self.mes.get().strip(), "tipo": tipo},
+        )
+        return uf, ano, mes, tipo
 
     def _use_browser(self) -> bool:
         return bool(self.app.cfg.http.browser)

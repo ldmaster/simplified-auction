@@ -10,8 +10,10 @@ from typing import TYPE_CHECKING, Any
 from ..models import STAGE_LABELS, STAGES
 from ..sources.caixa_detail import fetch_detail
 from ..viability import ViabilityInput, compute
+from . import state
 from .analysis import AnalysisView
-from .analyze_dialog import open_analyze_dialog
+from .analyze_dialog import auto_analyze, open_analyze_dialog
+from .external import ExternalView
 from .maps import MapPanel
 from .photos import PhotoGallery
 from .theme import semaforo_colors
@@ -128,6 +130,9 @@ class DetailView:
         self.map_panel.frame.pack(fill="x", pady=(6, 0))
         inner.add(media, text="Fotos & mapa")
 
+        self.external_view = ExternalView(inner, self.app)
+        inner.add(self.external_view.frame, text="Dados externos")
+
         self.media_tabs = inner
 
     # ------------------------------------------------------------------ render
@@ -149,6 +154,7 @@ class DetailView:
         self._update_semaforo_badge()
         self.gallery.set_urls(list((self._detail or {}).get("fotos") or []))
         self.map_panel.set_property(row, self._detail)
+        self.external_view.set_imovel(imovel_id)
 
     def _update_semaforo_badge(self) -> None:
         """Pinta o selo de semaforo da analise mais recente no cabecalho."""
@@ -341,6 +347,9 @@ class DetailView:
     def _analyze(self) -> None:
         if not self.imovel_id:
             messagebox.showinfo("Analise", "Selecione um imovel primeiro.")
+            return
+        if state.auto_analyze():
+            auto_analyze(self.app, imovel_id=self.imovel_id, on_saved=self._on_analysis_saved)
             return
         open_analyze_dialog(self.app, imovel_id=self.imovel_id, on_saved=self._on_analysis_saved)
 

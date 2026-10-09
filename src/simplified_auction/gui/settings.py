@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import contextlib
+import shutil
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
 
+from .. import paths
 from ..sources.caixa_csv import UFS
 from ..sync import enrich, sync_lista
+from . import state
 
 if TYPE_CHECKING:
     from .app import AuctionApp
@@ -51,6 +55,95 @@ class SettingsView:
         ttk.Button(collect, text="Enriquecer (limite 50)", command=self._enrich).grid(
             row=1, column=2, padx=6, pady=6
         )
+
+        prefs = ttk.LabelFrame(self.frame, text="Preferencias")
+        prefs.pack(fill="x", padx=6, pady=6)
+        self.auto_analyze = tk.BooleanVar(value=state.auto_analyze())
+        ttk.Checkbutton(
+            prefs,
+            text="Analise de IA automatica (1 clique: gera o prompt, envia e salva)",
+            variable=self.auto_analyze,
+            command=self._toggle_auto_analyze,
+        ).pack(anchor="w", padx=6, pady=6)
+
+        data = ttk.LabelFrame(self.frame, text="Dados")
+        data.pack(fill="x", padx=6, pady=6)
+        ttk.Label(
+            data,
+            text="Apaga o que foi coletado (catalogo, fichas, documentos e analises).",
+            foreground="#888",
+        ).pack(anchor="w", padx=6, pady=(6, 2))
+        ttk.Button(
+            data, text="Apagar dados sincronizados...", command=self._clear_data
+        ).pack(anchor="w", padx=6, pady=(0, 6))
+
+    def _toggle_auto_analyze(self) -> None:
+        state.set_auto_analyze(self.auto_analyze.get())
+        self.app.status.set(
+            "Analise automatica ativada." if self.auto_analyze.get()
+            else "Analise automatica desativada (abre o dialogo)."
+        )
+
+    def _clear_data(self) -> None:
+        window = tk.Toplevel(self.frame)
+        window.title("Apagar dados sincronizados")
+        window.transient(self.app.root)
+        window.resizable(False, False)
+        frame = ttk.Frame(window, padding=14)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(
+            frame,
+            text="Isto apaga os dados coletados. Escolha o que remover:",
+            font=("", 11, "bold"),
+        ).pack(anchor="w")
+        sempre = ttk.Label(
+            frame,
+            text="• Catalogo, fichas, historico de preco, localizacao e dados externos (sempre)",
+        )
+        sempre.pack(anchor="w", pady=(6, 2))
+        docs = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            frame, text="Documentos baixados (PDFs) e os arquivos do disco", variable=docs
+        ).pack(anchor="w")
+        analises = tk.BooleanVar(value=True)
+        ttk.Checkbutton(frame, text="Analises de IA", variable=analises).pack(anchor="w")
+        crm = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            frame, text="Pipeline, prazos e due diligence (seus dados de acompanhamento)",
+            variable=crm,
+        ).pack(anchor="w")
+        ttk.Label(
+            frame,
+            text="Nao da para desfazer.",
+            foreground="#b00",
+        ).pack(anchor="w", pady=(8, 0))
+
+        def confirmar() -> None:
+            if not messagebox.askyesno(
+                "Apagar dados",
+                "Confirma a remocao dos dados selecionados? Nao da para desfazer.",
+                parent=window,
+            ):
+                return
+            counts = self.app.store.clear_synced_data(
+                documents=docs.get(), analyses=analises.get(), crm=crm.get()
+            )
+            if docs.get():
+                with contextlib.suppress(OSError):
+                    shutil.rmtree(paths.documents_dir(), ignore_errors=True)
+            removidos = sum(counts.values())
+            window.destroy()
+            self.app.status.set(f"Dados apagados: {removidos} registro(s).")
+            self.app.opportunities.refresh()
+            self.app.pipeline.refresh()
+            self.app.documents.refresh()
+            self.app.detail.analysis_view.refresh()
+            self.app.refresh_counts()
+
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x", pady=(12, 0))
+        ttk.Button(buttons, text="Apagar", command=confirmar).pack(side="left")
+        ttk.Button(buttons, text="Cancelar", command=window.destroy).pack(side="left", padx=6)
 
     def update_counts(self, counts: dict[str, int]) -> None:
         """Atualiza o texto de contagens."""

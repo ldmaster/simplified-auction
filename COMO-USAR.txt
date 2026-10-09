@@ -28,8 +28,11 @@ COMO USAR A TELA
 
 Aba "Config":
   - Escolha o Estado e clique em "Sincronizar lista oficial".
-    Isso baixa a lista de imoveis (pode levar um tempo no Brasil todo).
   - Depois clique em "Enriquecer (limite 50)" para puxar os detalhes.
+  - Em "Preferencias" voce pode marcar "Analise de IA automatica": aí, clicar em
+    "Analisar com IA" ja faz tudo (gera o prompt, envia e salva).
+  - Em "Dados" voce pode apagar o que foi sincronizado, escolhendo o que remover.
+  - Os filtros das outras abas ficam salvos e voltam iguais quando voce reabrir.
 
 Aba "Oportunidades":
   - A lista aparece ordenada por um "score" (quanto maior, mais interessante).
@@ -47,6 +50,8 @@ Aba "Ficha":
   - Sub-aba "Fotos & mapa": as fotos do imovel (miniatura, previa grande,
     anterior/proximo, salvar como) e a localizacao (botoes "Google Maps" e
     "Rota"; e "Localizar no mapa" mostra o imovel num mapa).
+  - Sub-aba "Dados externos": busca dados publicos gratis — endereco oficial do
+    CEP e a situacao dos CNPJs que aparecem na matricula (credor/devedor).
   - "Viabilidade": calcule o custo real (comissao, ITBI, reforma, dividas...).
   - "Analisar com IA": veja abaixo.
 

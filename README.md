@@ -119,8 +119,39 @@ o edital é uma publicação de lote e pode cobrir vários imóveis, então o pr
 avisa a IA disso e pede para citar o número do imóvel quando aparecer. O
 resultado aparece na sub-aba **Análise IA** da própria aba Editais.
 
-### Fotos e mapa
+## Uso da GUI: conforto e limpeza
 
+- **Filtros lembrados:** os filtros de *Oportunidades* e de *Editais* ficam salvos
+  em `ui_state.json` e voltam iguais na próxima abertura.
+- **Progresso em modal:** operações demoradas abrem uma janela de progresso com
+  barra e contador de tempo (nada de indicador escondido no rodapé); o modal só
+  aparece se a operação passar de ~0,35s, para não piscar em ações rápidas.
+- **Análise automática (1 clique):** marque em **Config → Preferências**.
+  Aí, clicar em *Analisar com IA* já monta o prompt, envia ao provedor e salva —
+  sem abrir o diálogo. Sem provedor ativo, cai no modo manual automaticamente.
+- **Apagar dados sincronizados:** em **Config → Dados**. Você escolhe o que
+  remover (catálogo/fichas sempre; PDFs baixados e análises opcionalmente;
+  pipeline/prazos/due diligence ficam preservados por padrão).
+
+## Dados externos do imóvel (fontes públicas gratuitas)
+
+Na Ficha, sub-aba **Dados externos**:
+
+- **Buscar endereço (CEP)** — BrasilAPI (com ViaCEP de reserva): endereço
+  normalizado, bairro, município/UF, código IBGE, fuso e **coordenadas**.
+- **Buscar CNPJs da matrícula** — extrai os CNPJs do texto da matrícula
+  (credor/devedor) e consulta a BrasilAPI: razão social, **situação cadastral**,
+  atividade, município e capital social.
+
+Detalhe técnico: a BrasilAPI responde **403 a fingerprint de navegador**, então o
+app usa um cliente "simples" (UA honesto + `Accept: application/json`) para essas
+APIs — o oposto do que a Caixa exige.
+
+> O que **não** é consultado por não ser gratuito/livre: ônus reais
+> (ONR/registradores, com captcha/pagamento), preço de mercado (FipeZap/portais),
+> IPTU e valor venal (municipal) e áreas de risco (CEMADEN/IBGE, arquivos pesados).
+
+### Fotos e mapa
 - **Fotos:** a ficha lista as fotos do imóvel (contagem também aparece na aba
   Oportunidades). A galeria mostra miniaturas, prévia grande, navegação
   ◀/▶, **Abrir no navegador** e **Salvar como…**. As fotos vêm do

@@ -98,3 +98,35 @@ def test_documentos_e_analises():
         prompt_hash="h", semaforo="verde", result_json="{}",
     )
     assert store.analyses_for("1")[0]["id"] == analysis_id
+
+
+def test_enrichment_ida_e_volta():
+    store = Store(":memory:")
+    store.save_enrichment("1", "cep", '{"cep": "69980000"}')
+    assert store.get_enrichment("1")["cep"]["cep"] == "69980000"
+    store.clear_enrichment("1")
+    assert store.get_enrichment("1") == {}
+
+
+def test_clear_synced_data_preserva_crm_por_padrao():
+    from simplified_auction.models import Document
+
+    store = Store(":memory:")
+    store.upsert_properties([make()])
+    store.upsert_document(
+        Document(tipo="Matricula", uf="AC", mes=0, ano=0, nome="a.pdf", url="https://x/a.pdf")
+    )
+    store.add_analysis(
+        imovel_id="1", document_id=None, provider="manual", model="",
+        prompt_hash="h", semaforo="verde", result_json="{}",
+    )
+    store.set_stage("1", "triagem")
+
+    counts = store.clear_synced_data(documents=True, analyses=True, crm=False)
+    assert counts["properties"] == 1
+    contagens = store.counts()
+    assert contagens["properties"] == 0
+    assert contagens["documentos"] == 0
+    assert contagens["analises"] == 0
+    assert contagens["pipeline"] == 1
+    assert store.get_pipeline("1")["stage"] == "triagem"

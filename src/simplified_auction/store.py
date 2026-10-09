@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -135,6 +136,14 @@ CREATE TABLE IF NOT EXISTS geocode (
     lon        REAL NOT NULL,
     query      TEXT NOT NULL DEFAULT '',
     fetched_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS enrichment (
+    imovel_id  TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    payload    TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (imovel_id, source)
 );
 
 CREATE INDEX IF NOT EXISTS idx_properties_uf ON properties(uf);
@@ -395,6 +404,71 @@ class Store:
             (imovel_id, lat, lon, query, now_iso()),
         )
         self._conn.commit()
+
+    # ------------------------------------------------------------- dados externos
+
+    def save_enrichment(self, imovel_id: str, source: str, payload: str) -> None:
+        """Guarda o retorno de uma fonte externa para um imovel."""
+        self._conn.execute(
+            """
+            INSERT INTO enrichment (imovel_id, source, payload, fetched_at) VALUES (?,?,?,?)
+            ON CONFLICT(imovel_id, source) DO UPDATE SET
+                payload=excluded.payload, fetched_at=excluded.fetched_at
+            """,
+            (imovel_id, source, payload, now_iso()),
+        )
+        self._conn.commit()
+
+    def get_enrichment(self, imovel_id: str) -> dict[str, dict[str, Any]]:
+        """Retorna ``{fonte: dados}`` das consultas externas ja feitas."""
+        rows = self._conn.execute(
+            "SELECT source, payload FROM enrichment WHERE imovel_id=?", (imovel_id,)
+        ).fetchall()
+        result: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            try:
+                parsed = json.loads(str(row["payload"]))
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                result[str(row["source"])] = parsed
+        return result
+
+    def clear_enrichment(self, imovel_id: str) -> None:
+        """Remove os dados externos de um imovel."""
+        self._conn.execute("DELETE FROM enrichment WHERE imovel_id=?", (imovel_id,))
+        self._conn.commit()
+
+    # -------------------------------------------------------------------- limpeza
+
+    def clear_synced_data(
+        self, *, documents: bool = True, analyses: bool = True, crm: bool = False
+    ) -> dict[str, int]:
+        """Apaga os dados coletados (catalogo, fichas, historico e opcionalmente mais).
+
+        Args:
+            documents: Apagar tambem os documentos registrados e as analises? (ver ``analyses``).
+            analyses: Apagar tambem as analises de IA.
+            crm: Apagar tambem pipeline, prazos e due diligence (dados do usuario).
+
+        Returns:
+            Contagem de linhas removidas por tabela.
+        """
+        counts: dict[str, int] = {}
+        tables = ["properties", "price_history", "details", "snapshots", "geocode", "enrichment"]
+        if documents:
+            tables.append("documents")
+        if analyses:
+            tables.append("analyses")
+        if crm:
+            tables.extend(["pipeline", "tasks", "due_diligence"])
+        for table in tables:
+            counts[table] = int(
+                self._conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            )
+            self._conn.execute(f"DELETE FROM {table}")
+        self._conn.commit()
+        return counts
 
     def get_property(self, imovel_id: str) -> dict[str, Any] | None:
         """Retorna um imovel (com estagio do pipeline) ou ``None``."""
