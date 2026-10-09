@@ -30,9 +30,13 @@ class SettingsView:
         self.counts = ttk.Label(info, text="")
         self.counts.pack(anchor="w", padx=6, pady=4)
         ttk.Label(info, text=f"Banco: {self.app.cfg.db_path}").pack(anchor="w", padx=6)
-        provider = self.app.cfg.ai.provider
-        mode = "API" if self.app.cfg.ai.has_api else "manual (sem chave)"
-        ttk.Label(info, text=f"IA: provedor {provider} — modo {mode}").pack(anchor="w", padx=6, pady=(0, 6))
+        ai = self.app.ai_config()
+        mode = "API" if ai.has_api else "manual (sem chave)"
+        ttk.Label(
+            info,
+            text=f"IA: {ai.provider} ({ai.model or 'modelo padrao'}) — modo {mode} "
+            "(configure na aba IA)",
+        ).pack(anchor="w", padx=6, pady=(0, 6))
 
         collect = ttk.LabelFrame(self.frame, text="Coleta")
         collect.pack(fill="x", padx=6, pady=6)

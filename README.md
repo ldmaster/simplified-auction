@@ -93,15 +93,42 @@ uv pip install --python .venv/bin/python -e ".[browser]"
 
 Abas: **Oportunidades** (tabela por score, filtros, exportar CSV),
 **Ficha** (dados + ficha, viabilidade, due diligence, fotos, baixar matrícula,
-analisar com IA), **Pipeline**, **Editais** e **Config** (sincronizar/enriquecer).
+analisar com IA), **Pipeline**, **Editais**, **Config** (sincronizar/enriquecer)
+e **IA** (cadastro de provedores).
 
 ## Análise por IA (híbrida, nunca automática)
 
-- **Modo manual (padrão):** o app monta um prompt com o checklist jurídico
-  (matrícula, ônus, ocupação, débitos propter rem, prazos, riscos) + o texto do
-  documento. Você cola no ChatGPT/Claude/Gemini web e cola a resposta de volta;
-  o app interpreta o JSON e guarda. Sem custo.
-- **Modo API:** configure o ambiente e a análise roda direto.
+### Cadastro de provedor dentro do app (aba **IA**)
+
+Cadastre um ou mais provedores pela própria tela (ou pela CLI) e escolha o
+**ativo**. A análise passa a rodar de dentro do app:
+
+- Botão **Testar conexão** (mostra OK ou o erro — nunca falha em silêncio).
+- A chave fica só no seu computador, em `providers.json` com permissão `0600`.
+- Sem provedor ativo, o app cai no **modo manual** (gera o prompt para colar).
+
+```bash
+.venv/bin/auction ai list
+.venv/bin/auction ai add --kind anthropic --model claude-sonnet-4-5 --key sk-... --label "Meu Claude"
+.venv/bin/auction ai add --kind openai    --model gpt-4o-mini      --key sk-...
+.venv/bin/auction ai use <id>
+.venv/bin/auction ai test
+.venv/bin/auction ai rm <id>
+```
+
+Tipos aceitos: `anthropic`, `openai`, `gemini` e `compatible` (qualquer endpoint
+compatível com OpenAI, informando `--base-url`).
+
+### Modo manual (funciona sem provedor)
+
+O app monta um prompt com o checklist jurídico (matrícula, ônus, ocupação,
+débitos propter rem, prazos, riscos) + o texto do documento. Você cola no
+ChatGPT/Claude/Gemini web e cola a resposta de volta; o app interpreta o JSON e
+guarda. Sem custo.
+
+### Fallback por ambiente
+
+Se não houver provedor cadastrado, valem as variáveis:
 
 ```bash
 export AUCTION_AI_PROVIDER=anthropic    # anthropic | openai | gemini | compatible
@@ -121,7 +148,7 @@ export AUCTION_AI_KEY=sk-...
 | `AUCTION_MIN_INTERVAL` | `1.5` | segundos entre requisições (rate-limit) |
 | `AUCTION_USER_AGENT` | UA de navegador | identificar/ajustar o cliente |
 | `AUCTION_BROWSER` | `0` | `1` liga o modo navegador (Playwright) |
-| `AUCTION_AI_*` | — | provedor, modelo e chave da IA |
+| `AUCTION_AI_*` | — | provedor/modelo/chave (fallback; prefira a aba IA) |
 
 ## Qualidade
 

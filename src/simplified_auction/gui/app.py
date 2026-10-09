@@ -9,12 +9,15 @@ from tkinter import ttk
 from typing import Any
 
 from .. import config as config_module
+from ..config import AIConfig
 from ..http import HttpClient
+from ..providers import resolve_ai_config
 from ..store import Store
 from .detail import DetailView
 from .documents import DocumentsView
 from .opportunities import OpportunitiesView
 from .pipeline import PipelineView
+from .providers import ProvidersView
 from .settings import SettingsView
 
 
@@ -44,12 +47,14 @@ class AuctionApp:
         self.pipeline = PipelineView(self.notebook, self)
         self.documents = DocumentsView(self.notebook, self)
         self.settings = SettingsView(self.notebook, self)
+        self.providers = ProvidersView(self.notebook, self)
 
         self.notebook.add(self.opportunities.frame, text="Oportunidades")
         self.notebook.add(self.detail.frame, text="Ficha")
         self.notebook.add(self.pipeline.frame, text="Pipeline")
         self.notebook.add(self.documents.frame, text="Editais")
         self.notebook.add(self.settings.frame, text="Config")
+        self.notebook.add(self.providers.frame, text="IA")
 
         bar = ttk.Label(self.root, textvariable=self.status, anchor="w", relief="sunken")
         bar.pack(fill="x", side="bottom")
@@ -61,6 +66,10 @@ class AuctionApp:
     def http(self) -> HttpClient:
         """Cria um cliente HTTP com a configuracao atual."""
         return HttpClient(self.cfg.http)
+
+    def ai_config(self) -> AIConfig:
+        """Resolve a configuracao de IA ativa (provedor cadastrado ou ambiente)."""
+        return resolve_ai_config()
 
     def run_async(self, work: Callable[[], Any], on_done: Callable[[Any], None]) -> None:
         """Executa ``work`` em uma thread e entrega o resultado na thread da UI.

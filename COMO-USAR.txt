@@ -51,15 +51,24 @@ Aba "Pipeline":
 Aba "Editais":
   - Liste e baixe os editais publicados (PDF).
 
-ANALISE COM IA (opcional)
--------------------------
+Aba "IA":
+  - Cadastre seu provedor de IA (Anthropic/Claude, OpenAI, Gemini ou um
+    endereco compativel). Informe o nome, o tipo, o modelo e a CHAVE de API.
+  - Clique em "Salvar" e depois em "Testar conexao": aparece "OK" ou o erro.
+  - Clique em "Definir como ativo" para o programa usar esse provedor.
+  - A chave fica so no seu computador. Nada e enviado a lugar nenhum alem do
+    proprio provedor que voce escolher.
 
-Sem configuracao, o botao "Analisar com IA" gera um texto (prompt). Voce copia,
-cola no ChatGPT/Claude/Gemini no navegador e cola a resposta de volta no
-programa, clicando em "Salvar analise". Nao tem custo.
+ANALISE COM IA
+--------------
 
-Se voce tiver uma chave de API (Anthropic/OpenAI/Gemini), pode configurar para
-ser automatico. Veja o README (secao "Analise por IA").
+Na aba "Ficha" do imovel, clique em "Analisar com IA".
+
+- Se voce cadastrou um provedor (aba "IA"), a analise roda dentro do programa e
+  o resultado aparece na hora.
+- Se NAO cadastrou, o programa gera um texto (prompt): voce copia, cola no
+  ChatGPT/Claude/Gemini no navegador, e cola a resposta de volta, clicando em
+  "Salvar analise". Nao tem custo.
 
 IMPORTANTE
 ----------

@@ -15,6 +15,15 @@ from . import config as config_module
 from .analyze import AIError, prepare, run_api, store_result
 from .http import HttpClient, HttpError
 from .models import DOCUMENT_TYPES
+from .providers import (
+    KINDS,
+    Provider,
+    load_book,
+    new_id,
+    resolve_ai_config,
+    save_book,
+    to_ai_config,
+)
 from .scoring import with_score
 from .sources import caixa_csv, caixa_docs, caixa_search
 from .store import Store
@@ -106,6 +115,28 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_gui = sub.add_parser("gui", help="Abre a interface grafica.")
     p_gui.set_defaults(func=_cmd_gui)
+
+    p_ai = sub.add_parser("ai", help="Provedores de IA (analisar dentro do app).")
+    ai_sub = p_ai.add_subparsers(dest="ai_command", required=True)
+    ai_sub.add_parser("list", help="Lista os provedores cadastrados.").set_defaults(
+        func=_cmd_ai_list
+    )
+    p_ai_add = ai_sub.add_parser("add", help="Cadastra um provedor.")
+    p_ai_add.add_argument("--kind", required=True, choices=KINDS)
+    p_ai_add.add_argument("--model", default="")
+    p_ai_add.add_argument("--key", default="")
+    p_ai_add.add_argument("--label", default="")
+    p_ai_add.add_argument("--base-url", default="")
+    p_ai_add.set_defaults(func=_cmd_ai_add)
+    p_ai_use = ai_sub.add_parser("use", help="Define o provedor ativo.")
+    p_ai_use.add_argument("id")
+    p_ai_use.set_defaults(func=_cmd_ai_use)
+    p_ai_rm = ai_sub.add_parser("rm", help="Remove um provedor.")
+    p_ai_rm.add_argument("id")
+    p_ai_rm.set_defaults(func=_cmd_ai_rm)
+    p_ai_test = ai_sub.add_parser("test", help="Testa a conexao com o provedor.")
+    p_ai_test.add_argument("--id", default=None)
+    p_ai_test.set_defaults(func=_cmd_ai_test)
 
     return parser
 
@@ -291,23 +322,23 @@ def _cmd_search(args: argparse.Namespace, cfg: config_module.Config) -> int:
 
 
 def _cmd_analyze(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    ai = resolve_ai_config()
     with _open_db(cfg) as store:
         try:
             prepared = prepare(store, args.imovel_id, document_id=args.documento)
         except AIError as exc:
             print(f"erro: {exc}")
             return 1
-        if args.manual or not cfg.ai.has_api:
+        if args.manual or not ai.has_api:
             print(prepared.prompt)
             if args.out:
                 args.out.write_text(prepared.prompt, encoding="utf-8")
             print("\n[modo manual] cole o prompt acima em um chat de IA.", file=sys.stderr)
             return 0
-        assert cfg.ai.api_key is not None
-        raw = run_api(cfg.ai, prepared.prompt, provider=args.provider, model=args.model)
+        raw = run_api(ai, prepared.prompt, provider=args.provider, model=args.model)
         analysis_id, result = store_result(
             store, imovel_id=args.imovel_id, document_id=args.documento,
-            provider=args.provider or cfg.ai.provider, model=args.model or cfg.ai.model,
+            provider=args.provider or ai.provider, model=args.model or ai.model,
             prompt=prepared.prompt, raw=raw,
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -319,6 +350,75 @@ def _cmd_gui(args: argparse.Namespace, cfg: config_module.Config) -> int:
     from .gui import main as gui_main
 
     return gui_main(cfg)
+
+
+def _cmd_ai_list(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    book = load_book()
+    if not book.providers:
+        print("Nenhum provedor cadastrado (modo manual). Use: auction ai add ...")
+        return 0
+    for provider in book.providers:
+        mark = "*" if provider.id == book.active else " "
+        key = "sim" if provider.api_key else "nao"
+        print(
+            f"{mark} {provider.id}  {provider.display}  chave:{key}  "
+            f"base_url:{provider.base_url or '-'}"
+        )
+    print("(* = ativo)")
+    return 0
+
+
+def _cmd_ai_add(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    book = load_book()
+    provider = Provider(
+        id=new_id(), kind=args.kind, label=args.label, model=args.model,
+        base_url=args.base_url, api_key=args.key,
+    )
+    book.upsert(provider)
+    save_book(book)
+    print(f"cadastrado {provider.id}: {provider.display} (ativo={book.active == provider.id})")
+    return 0
+
+
+def _cmd_ai_use(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    book = load_book()
+    if book.get(args.id) is None:
+        print(f"provedor {args.id} nao encontrado")
+        return 1
+    book.set_active(args.id)
+    save_book(book)
+    print(f"ativo agora: {args.id}")
+    return 0
+
+
+def _cmd_ai_rm(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    book = load_book()
+    if book.get(args.id) is None:
+        print(f"provedor {args.id} nao encontrado")
+        return 1
+    book.remove(args.id)
+    save_book(book)
+    print(f"removido {args.id}")
+    return 0
+
+
+def _cmd_ai_test(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    book = load_book()
+    provider = book.get(args.id) if args.id else book.active_provider()
+    if provider is None:
+        print("nenhum provedor (cadastre com 'auction ai add').")
+        return 1
+    ai = to_ai_config(provider)
+    if not ai.has_api:
+        print("provedor sem chave de API.")
+        return 1
+    try:
+        reply = run_api(ai, "Responda apenas com a palavra: ok")
+    except AIError as exc:
+        print(f"falhou: {exc}")
+        return 2
+    print(f"OK ({provider.display}): {' '.join(reply.split())[:200]}")
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:

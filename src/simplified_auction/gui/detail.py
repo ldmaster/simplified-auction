@@ -347,7 +347,8 @@ class DetailView:
 
         def run() -> None:
             prompt = getattr(window, "prompt", text.get("1.0", "end").strip())
-            if not self.app.cfg.ai.has_api:
+            ai = self.app.ai_config()
+            if not ai.has_api:
                 window.clipboard_clear()
                 window.clipboard_append(prompt)
                 messagebox.showinfo(
@@ -359,7 +360,7 @@ class DetailView:
             self.app.status.set("Consultando a IA...")
 
             def work() -> Any:
-                return run_api(self.app.cfg.ai, prompt)
+                return run_api(ai, prompt)
 
             def done(result: Any) -> None:
                 if isinstance(result, Exception):
@@ -377,10 +378,11 @@ class DetailView:
             if not raw:
                 return
             prompt = getattr(window, "prompt", raw)
+            ai = self.app.ai_config()
             _, result = store_result(
                 self.app.store, imovel_id=self.imovel_id, document_id=selected_doc_id(),
-                provider="manual" if not self.app.cfg.ai.has_api else self.app.cfg.ai.provider,
-                model=self.app.cfg.ai.model, prompt=prompt, raw=raw,
+                provider=ai.provider if ai.has_api else "manual",
+                model=ai.model, prompt=prompt, raw=raw,
             )
             self.app.status.set(f"Analise salva: semaforo {result.get('semaforo', 'n/d')}.")
             messagebox.showinfo("Analise", json.dumps(result, ensure_ascii=False, indent=2)[:2000])
