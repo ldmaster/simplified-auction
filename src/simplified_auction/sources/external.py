@@ -16,6 +16,7 @@ import re
 from typing import Any
 
 from ..http import HttpClient, HttpError
+from ..normalize import format_brl
 
 BRASILAPI_CEP = "https://brasilapi.com.br/api/cep/v2/{cep}"
 BRASILAPI_CNPJ = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
@@ -107,11 +108,6 @@ def describe_cep(data: dict[str, Any]) -> list[tuple[str, str]]:
     return [(label, value) for label, value in rows if value]
 
 
-def _brl(value: float) -> str:
-    """Formata um valor em reais no padrao brasileiro."""
-    return "R$ " + f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
 def describe_cnpj(data: dict[str, Any]) -> list[tuple[str, str]]:
     """Converte o retorno de CNPJ em pares (rotulo, valor) legiveis."""
     capital = data.get("capital_social")
@@ -125,6 +121,6 @@ def describe_cnpj(data: dict[str, Any]) -> list[tuple[str, str]]:
             f"{data.get('municipio') or ''} - {data.get('uf') or ''}".strip(" -"),
         ),
         ("Aberta em", str(data.get("data_inicio_atividade") or "")),
-        ("Capital social", _brl(capital) if isinstance(capital, (int, float)) else ""),
+        ("Capital social", format_brl(capital) if isinstance(capital, (int, float)) else ""),
     ]
     return [(label, value) for label, value in rows if value]

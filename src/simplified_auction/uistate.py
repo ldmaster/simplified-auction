@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .. import paths
+from . import paths
 
 _FILE_NAME = "ui_state.json"
 _cache: dict[str, Any] | None = None
@@ -90,3 +90,14 @@ def auto_analyze() -> bool:
 def set_auto_analyze(value: bool) -> None:
     """Grava a preferencia de analise automatica."""
     put("auto_analyze", bool(value))
+
+
+def last_check_at() -> str | None:
+    """Momento da ultima verificacao de novidades (ISO) ou ``None``."""
+    value = load().get("last_check_at")
+    return str(value) if value else None
+
+
+def set_last_check_at(value: str) -> None:
+    """Grava o momento da ultima verificacao de novidades."""
+    put("last_check_at", value)

@@ -9,9 +9,9 @@ from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
 
 from .. import paths
+from .. import uistate as state
 from ..sources.caixa_csv import UFS
 from ..sync import enrich, sync_lista
-from . import state
 
 if TYPE_CHECKING:
     from .app import AuctionApp

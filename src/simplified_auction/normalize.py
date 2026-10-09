@@ -68,6 +68,11 @@ def parse_money(value: str | None) -> float | None:
     return parse_number(value)
 
 
+def format_brl(value: float) -> str:
+    """Formata um numero como reais no padrao brasileiro (``R$ 1.234,56``)."""
+    return "R$ " + f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def parse_cep(value: str | None) -> str | None:
     """Extrai um CEP de um texto (com ou sem hifen)."""
     if not value:

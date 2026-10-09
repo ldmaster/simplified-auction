@@ -1,4 +1,4 @@
-from simplified_auction.gui import state
+from simplified_auction import uistate as state
 
 
 def test_filtros_persistem(tmp_path, monkeypatch):

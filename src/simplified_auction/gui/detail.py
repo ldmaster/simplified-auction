@@ -7,10 +7,10 @@ import webbrowser
 from tkinter import messagebox, scrolledtext, ttk
 from typing import TYPE_CHECKING, Any
 
+from .. import uistate as state
 from ..models import STAGE_LABELS, STAGES
 from ..sources.caixa_detail import fetch_detail
 from ..viability import ViabilityInput, compute
-from . import state
 from .analysis import AnalysisView
 from .analyze_dialog import auto_analyze, open_analyze_dialog
 from .external import ExternalView

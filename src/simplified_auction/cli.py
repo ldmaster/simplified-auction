@@ -26,7 +26,7 @@ from .providers import (
 )
 from .scoring import with_score
 from .sources import caixa_csv, caixa_docs, caixa_search
-from .store import Store
+from .store import Store, now_iso
 from .sync import enrich, fetch_matriculas, sync_lista
 
 EXPORT_COLUMNS = (
@@ -115,6 +115,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_analyze.add_argument("--manual", action="store_true", help="So gera o prompt.")
     p_analyze.add_argument("--out", type=Path, default=None, help="Salva o prompt/resposta.")
     p_analyze.set_defaults(func=_cmd_analyze)
+
+    p_news = sub.add_parser("news", help="Novidades do catalogo (novos, preco, documentos).")
+    p_news.add_argument("--uf", default=None, choices=caixa_csv.UFS)
+    p_news.add_argument("--sync", action="store_true", help="Sincroniza a lista antes de listar.")
+    p_news.add_argument("--since", default=None, help="ISO; padrao: ultima verificacao salva.")
+    p_news.add_argument("--notify", action="store_true", help="Notifica no sistema.")
+    p_news.set_defaults(func=_cmd_news)
 
     p_gui = sub.add_parser("gui", help="Abre a interface grafica.")
     p_gui.set_defaults(func=_cmd_gui)
@@ -369,6 +376,30 @@ def _cmd_gui(args: argparse.Namespace, cfg: config_module.Config) -> int:
     from .gui import main as gui_main
 
     return gui_main(cfg)
+
+
+def _cmd_news(args: argparse.Namespace, cfg: config_module.Config) -> int:
+    from . import notify as notify_module
+    from . import uistate
+    from .changes import kind_label, summary
+
+    since = args.since or uistate.last_check_at()
+    with _open_db(cfg) as store:
+        if args.sync:
+            uf = args.uf or str(uistate.filters("editais").get("uf") or "geral")
+            with _client(cfg) as client:
+                sync_lista(store, client, uf)
+        items = store.news_since(since)
+    print(f"{len(items)} novidade(s): {summary(items)}")
+    for item in items:
+        print(
+            f"  [{kind_label(str(item.get('kind') or ''))}] "
+            f"{item.get('imovel_id') or '-'} {item.get('detail') or ''}"
+        )
+    uistate.set_last_check_at(now_iso())
+    if args.notify and items:
+        notify_module.notify("simplified-auction — novidades", summary(items))
+    return 0
 
 
 def _cmd_ai_list(args: argparse.Namespace, cfg: config_module.Config) -> int:

@@ -119,6 +119,39 @@ o edital é uma publicação de lote e pode cobrir vários imóveis, então o pr
 avisa a IA disso e pede para citar o número do imóvel quando aparecer. O
 resultado aparece na sub-aba **Análise IA** da própria aba Editais.
 
+## Monitor de novidades
+
+Aba **Monitor**: verifica o catálogo de tempos em tempos e avisa o que mudou
+(imóvel novo, **queda de preço**, saiu do catálogo, documento novo).
+
+- Marque **Verificar automaticamente** e o intervalo (em minutos). O app também
+  dispara uma **notificação do sistema** (macOS `osascript`, Linux `notify-send`).
+- A lista mostra cada novidade com data, tipo, imóvel e detalhe (duplo clique
+  abre a ficha).
+- O monitor roda **enquanto o app estiver aberto**. Para vigiar sem a janela:
+
+```bash
+.venv/bin/auction news --sync --uf AC --notify     # agende no cron/launchd
+```
+
+As novidades são registradas durante o `sync`, então o `news` não precisa
+recalcular nada — ele lê o que aconteceu desde a última verificação salva.
+
+## Comparar análises
+
+Aba **Comparar**: escolha *Análises de imóveis* ou *Análises de editais*,
+selecione 2 a 4 (Ctrl/Cmd) e clique em **Comparar**. A comparação é local (não
+gasta IA) e mostra:
+
+- **Tabela lado a lado** dos campos (valor mínimo, tipo, ocupação, débitos,
+  prazos, ônus...) com as **linhas que diferem destacadas**.
+- **Riscos exclusivos de cada análise** (com a gravidade) e os **riscos em comum**.
+- **Checklist divergente**: em qual item uma diz OK e a outra diz CRÍTICO.
+- **Por que**: o resumo de cada análise, lado a lado.
+
+O botão **Explicar com IA** envia as duas análises ao provedor ativo e pede uma
+explicação das diferenças (custa uso do plano; é opcional).
+
 ## Uso da GUI: conforto e limpeza
 
 - **Filtros lembrados:** os filtros de *Oportunidades* e de *Editais* ficam salvos

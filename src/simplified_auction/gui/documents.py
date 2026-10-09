@@ -6,10 +6,10 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
 
+from .. import uistate as state
 from ..models import DOCUMENT_TYPES
 from ..sources import caixa_docs
 from ..sources.caixa_csv import UFS
-from . import state
 from .analysis import AnalysisView
 from .analyze_dialog import auto_analyze, open_analyze_dialog
 

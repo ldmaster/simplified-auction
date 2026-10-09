@@ -108,6 +108,34 @@ def test_enrichment_ida_e_volta():
     assert store.get_enrichment("1") == {}
 
 
+def test_news_since_registra_novo_preco_e_saida():
+    store = Store(":memory:")
+    store.upsert_properties([make("1"), make("2")], snapshot_date="2026-01-01")
+    assert [item["kind"] for item in store.news_since(None)] == ["novo", "novo"]
+
+    store.upsert_properties(
+        [make("1", preco=80000.0, desconto=60.0)], snapshot_date="2026-01-02"
+    )
+    kinds = {item["kind"] for item in store.news_since(None)}
+    assert kinds == {"novo", "preco", "saiu"}
+    assert store.news_since("2999-01-01T00:00:00+00:00") == []
+
+
+def test_recent_analyses_separa_imoveis_e_editais():
+    store = Store(":memory:")
+    store.add_analysis(
+        imovel_id="1", document_id=None, provider="manual", model="",
+        prompt_hash="h", semaforo="verde", result_json="{}",
+    )
+    store.add_analysis(
+        imovel_id=None, document_id=5, provider="manual", model="",
+        prompt_hash="h", semaforo="amarelo", result_json="{}",
+    )
+    assert len(store.recent_analyses(imovel=True)) == 1
+    assert len(store.recent_analyses(imovel=False)) == 1
+    assert len(store.recent_analyses()) == 2
+
+
 def test_clear_synced_data_preserva_crm_por_padrao():
     from simplified_auction.models import Document
 

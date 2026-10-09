@@ -17,8 +17,10 @@ from ..config import AIConfig
 from ..http import HttpClient
 from ..providers import resolve_ai_config
 from ..store import Store
+from .compare import CompareView
 from .detail import DetailView
 from .documents import DocumentsView
+from .monitor import MonitorView
 from .opportunities import OpportunitiesView
 from .pipeline import PipelineView
 from .providers import ProvidersView
@@ -60,11 +62,15 @@ class AuctionApp:
         self.documents = DocumentsView(self.notebook, self)
         self.settings = SettingsView(self.notebook, self)
         self.providers = ProvidersView(self.notebook, self)
+        self.compare = CompareView(self.notebook, self)
+        self.monitor = MonitorView(self.notebook, self)
 
         self.notebook.add(self.opportunities.frame, text="Oportunidades")
         self.notebook.add(self.detail.frame, text="Ficha")
         self.notebook.add(self.pipeline.frame, text="Pipeline")
         self.notebook.add(self.documents.frame, text="Editais")
+        self.notebook.add(self.compare.frame, text="Comparar")
+        self.notebook.add(self.monitor.frame, text="Monitor")
         self.notebook.add(self.settings.frame, text="Config")
         self.notebook.add(self.providers.frame, text="IA")
 
@@ -194,4 +200,6 @@ class AuctionApp:
         """Recarrega todas as abas."""
         self.opportunities.refresh()
         self.pipeline.refresh()
+        self.compare.refresh()
+        self.monitor.refresh()
         self.refresh_counts()

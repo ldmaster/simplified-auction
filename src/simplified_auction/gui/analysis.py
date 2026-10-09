@@ -8,7 +8,7 @@ from tkinter import messagebox, scrolledtext, ttk
 from typing import TYPE_CHECKING, Any
 
 from ..analyze.render import Block, render
-from .theme import is_dark, palette, tag_options
+from .widgets import style_text, write_blocks
 
 if TYPE_CHECKING:
     from .app import AuctionApp
@@ -40,21 +40,8 @@ class AnalysisView:
 
         self.text = scrolledtext.ScrolledText(self.frame, wrap="word", padx=10, pady=8)
         self.text.pack(fill="both", expand=True, padx=4, pady=(0, 4))
-        dark = self._detect_dark()
-        colors = palette(dark)
-        self.text.configure(foreground=colors["body"], insertbackground=colors["body"])
-        for tag, options in tag_options(dark).items():
-            self.text.tag_configure(tag, **options)
+        style_text(self.text)
         self.text.configure(state="disabled")
-
-    def _detect_dark(self) -> bool:
-        """Detecta se o tema do sistema e escuro (pela cor de fundo real)."""
-        try:
-            background = str(self.text.cget("background"))
-            red, green, blue = self.text.winfo_rgb(background)
-        except tk.TclError:
-            return False
-        return is_dark((int(red / 257), int(green / 257), int(blue / 257)))
 
     # ------------------------------------------------------------------ dados
 
@@ -126,16 +113,7 @@ class AnalysisView:
         self._render_blocks(render(result, meta=meta))
 
     def _render_blocks(self, blocks: list[Block]) -> None:
-        self.text.configure(state="normal")
-        self.text.delete("1.0", "end")
-        for block in blocks:
-            start = self.text.index("insert")
-            self.text.insert("end", f"{block.text}\n")
-            if block.tag:
-                self.text.tag_add(block.tag, start, "insert")
-        self.text.configure(state="disabled")
-        self.text.mark_set("insert", "1.0")
-        self.text.see("1.0")
+        write_blocks(self.text, blocks)
 
     # ------------------------------------------------------------------ acoes
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import DUE_DILIGENCE_ITEMS, Detail, Document, Property
+from .normalize import format_brl
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS properties (
@@ -128,6 +129,14 @@ CREATE TABLE IF NOT EXISTS snapshots (
     source     TEXT NOT NULL,
     taken_at   TEXT NOT NULL,
     rows_count INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS changes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind       TEXT NOT NULL,
+    imovel_id  TEXT,
+    detail     TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS geocode (
@@ -332,6 +341,7 @@ class Store:
             if row is None:
                 self._insert_property(prop, snap)
                 self._record_price(prop, snap)
+                self._record_change("novo", prop.imovel_id, self._describe(prop))
                 result.new.append(prop.imovel_id)
                 continue
             old_preco: float | None = row["preco"]
@@ -341,6 +351,13 @@ class Store:
                 self._record_price(prop, snap)
                 result.changed.append(prop.imovel_id)
                 if self._is_price_drop(old_preco, prop.preco):
+                    de = format_brl(old_preco) if old_preco is not None else "-"
+                    para = format_brl(prop.preco) if prop.preco is not None else "-"
+                    self._record_change(
+                        "preco",
+                        prop.imovel_id,
+                        f"{self._describe(prop)} | de {de} para {para}",
+                    )
                     result.price_drop.append(prop.imovel_id)
             else:
                 result.unchanged += 1
@@ -359,9 +376,69 @@ class Store:
                         "UPDATE properties SET active=0 WHERE imovel_id=?",
                         (stale_row["imovel_id"],),
                     )
-                    result.deactivated.append(stale_row["imovel_id"])
+                    self._record_change("saiu", str(stale_row["imovel_id"]), "saiu do catalogo")
+                    result.deactivated.append(str(stale_row["imovel_id"]))
         self._conn.commit()
         return result
+
+    @staticmethod
+    def _describe(prop: Property) -> str:
+        """Texto curto de um imovel para a lista de novidades."""
+        local = f"{prop.cidade}/{prop.uf}".strip("/")
+        preco = format_brl(prop.preco) if prop.preco is not None else "sem preco"
+        return f"{local} - {prop.tipo or 'imovel'} - {preco}"
+
+    def _record_change(self, kind: str, imovel_id: str | None, detail: str) -> None:
+        self._conn.execute(
+            "INSERT INTO changes (kind, imovel_id, detail, created_at) VALUES (?,?,?,?)",
+            (kind, imovel_id, detail, now_iso()),
+        )
+
+    def news_since(self, since: str | None, limit: int = 200) -> list[dict[str, Any]]:
+        """Novidades registradas depois de ``since`` (mais recentes primeiro)."""
+        if since:
+            rows = self._conn.execute(
+                "SELECT * FROM changes WHERE created_at > ? ORDER BY created_at DESC LIMIT ?",
+                (since, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM changes ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def recent_analyses(
+        self, *, imovel: bool | None = None, limit: int = 200
+    ) -> list[dict[str, Any]]:
+        """Analises recentes com o contexto (imovel ou documento) para comparar.
+
+        Args:
+            imovel: ``True`` so analises de imoveis, ``False`` so de editais,
+                ``None`` para todas.
+            limit: Limite de linhas.
+
+        Returns:
+            As analises, mais recentes primeiro.
+        """
+        where = ""
+        if imovel is True:
+            where = "WHERE a.imovel_id IS NOT NULL"
+        elif imovel is False:
+            where = "WHERE a.imovel_id IS NULL"
+        rows = self._conn.execute(
+            f"""
+            SELECT a.*, p.cidade, p.bairro, p.uf,
+                   d.nome AS doc_nome, d.tipo AS doc_tipo
+            FROM analyses a
+            LEFT JOIN properties p ON p.imovel_id = a.imovel_id
+            LEFT JOIN documents d ON d.id = a.document_id
+            {where}
+            ORDER BY a.created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def add_snapshot(self, source: str, rows_count: int) -> None:
         """Registra um snapshot coletado."""
@@ -455,7 +532,10 @@ class Store:
             Contagem de linhas removidas por tabela.
         """
         counts: dict[str, int] = {}
-        tables = ["properties", "price_history", "details", "snapshots", "geocode", "enrichment"]
+        tables = [
+            "properties", "price_history", "details", "snapshots", "changes",
+            "geocode", "enrichment",
+        ]
         if documents:
             tables.append("documents")
         if analyses:
@@ -775,11 +855,15 @@ class Store:
 
     def upsert_document(self, doc: Document) -> int:
         """Insere (ou reaproveita) um documento e retorna o id."""
-        self._conn.execute(
+        cur = self._conn.execute(
             "INSERT OR IGNORE INTO documents "
             "(imovel_id, tipo, uf, mes, ano, nome, url) VALUES (?,?,?,?,?,?,?)",
             (doc.imovel_id, doc.tipo, doc.uf, doc.mes, doc.ano, doc.nome, doc.url),
         )
+        if cur.rowcount:
+            self._record_change(
+                "documento", doc.imovel_id, f"{doc.tipo or 'Documento'} - {doc.nome}"
+            )
         self._conn.commit()
         row = self._conn.execute("SELECT id FROM documents WHERE url=?", (doc.url,)).fetchone()
         return int(row["id"])

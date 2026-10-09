@@ -1,9 +1,16 @@
 from simplified_auction.normalize import (
     ascii_fold,
+    format_brl,
     parse_cep,
     parse_descricao,
     parse_number,
 )
+
+
+def test_format_brl():
+    assert format_brl(1234.5) == "R$ 1.234,50"
+    assert format_brl(112600000000.0) == "R$ 112.600.000.000,00"
+    assert format_brl(0) == "R$ 0,00"
 
 
 def test_parse_number_formatos():

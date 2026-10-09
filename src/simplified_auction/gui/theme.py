@@ -24,6 +24,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         "status_atencao": "#a9750a",
         "status_critico": "#c0392b",
         "status_nao_consta": "#888888",
+        "diff": "#a9750a",
     },
     "dark": {
         "body": "#e8e8e8",
@@ -38,6 +39,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         "status_atencao": "#f0b429",
         "status_critico": "#ff7b6b",
         "status_nao_consta": "#9aa7b4",
+        "diff": "#f0b429",
     },
 }
 
@@ -108,6 +110,10 @@ def tag_options(dark: bool) -> dict[str, dict[str, Any]]:
             "foreground": colors["status_nao_consta"],
             "font": ("", 11, "bold"),
             "spacing1": 4,
+        },
+        "diff": {
+            "foreground": colors["diff"],
+            "font": ("Menlo", 10, "bold"),
         },
     }
     for tag, background in _SEMAFORO_BG.items():

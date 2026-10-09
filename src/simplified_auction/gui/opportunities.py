@@ -8,9 +8,9 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING, Any
 
+from .. import uistate as state
 from ..scoring import with_score
 from ..sources.caixa_csv import UFS
-from . import state
 
 if TYPE_CHECKING:
     from .app import AuctionApp

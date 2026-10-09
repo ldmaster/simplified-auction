@@ -63,6 +63,19 @@ Aba "Editais":
   - Selecione um edital ja baixado e clique em "Analisar com IA" para a IA ler o
     edital (a analise aparece na sub-aba "Analise IA" desta mesma aba).
 
+Aba "Comparar":
+  - Escolha "Analises de imoveis" ou "Analises de editais", selecione 2 a 4
+    (segure Ctrl/Cmd) e clique em "Comparar".
+  - Ele mostra a tabela lado a lado com as diferencas destacadas, os riscos que
+    so existem em cada uma, o checklist divergente e o resumo (o porque) de cada.
+  - "Explicar com IA" pede ao provedor uma explicacao das diferencas (opcional).
+
+Aba "Monitor":
+  - Marque "Verificar automaticamente" e escolha de quantos em quantos minutos.
+  - Quando algo novo aparecer (imovel novo, queda de preco, documento novo), o
+    programa avisa na lista e mostra uma notificacao do sistema.
+  - O monitor funciona enquanto o app estiver aberto.
+
 Aba "IA":
   - Escolha o "Tipo":
       * "Command Code (assinatura via CLI)": usa a sua assinatura do Command Code
