@@ -1,0 +1,71 @@
+COMO USAR — simplified-auction
+==============================
+
+O que e: um programa para acompanhar imoveis em leilao/venda da Caixa e ajudar
+voce a decidir. Ele baixa a lista oficial de imoveis, mostra as melhores
+oportunidades, guarda a matricula em PDF de cada imovel e ajuda a analisar os
+documentos com uma IA (opcional).
+
+NAO precisa instalar nada.
+--------------------------
+
+1. Baixe o arquivo do seu sistema nas Releases:
+   https://github.com/ldmaster/simplified-auction/releases
+   (nao precisa de conta no GitHub para baixar)
+
+   - Windows: simplified-auction-windows.zip
+   - Mac:     simplified-auction-macos.zip
+   - Linux:   simplified-auction-linux.zip
+
+2. Descompacte e abra o programa:
+   - Windows: dois cliques em simplified-auction-gui.exe
+   - Mac:     dois cliques em simplified-auction-gui.app
+   (No Mac, se aparecer aviso de seguranca, clique com o botao direito >
+    Abrir, ou rode: xattr -d com.apple.quarantine simplified-auction-gui.app)
+
+COMO USAR A TELA
+----------------
+
+Aba "Config":
+  - Escolha o Estado e clique em "Sincronizar lista oficial".
+    Isso baixa a lista de imoveis (pode levar um tempo no Brasil todo).
+  - Depois clique em "Enriquecer (limite 50)" para puxar os detalhes.
+
+Aba "Oportunidades":
+  - A lista aparece ordenada por um "score" (quanto maior, mais interessante).
+  - Use os filtros (Estado, desconto minimo, busca por cidade/bairro).
+  - Dois cliques em um imovel abre a "Ficha".
+  - "Exportar CSV" salva a lista numa planilha.
+
+Aba "Ficha":
+  - Mostra os dados do imovel e a ficha completa da Caixa.
+  - "Baixar matricula": salva o PDF da matricula.
+  - "Carregar fotos": mostra as fotos do imovel.
+  - "Viabilidade": calcule o custo real (comissao, ITBI, reforma, dividas...).
+  - "Due diligence": checklist para marcar o que voce ja conferiu.
+  - "Analisar com IA": veja abaixo.
+
+Aba "Pipeline":
+  - Acompanhe os imoveis por etapa (triagem, due diligence, proposta...).
+
+Aba "Editais":
+  - Liste e baixe os editais publicados (PDF).
+
+ANALISE COM IA (opcional)
+-------------------------
+
+Sem configuracao, o botao "Analisar com IA" gera um texto (prompt). Voce copia,
+cola no ChatGPT/Claude/Gemini no navegador e cola a resposta de volta no
+programa, clicando em "Salvar analise". Nao tem custo.
+
+Se voce tiver uma chave de API (Anthropic/OpenAI/Gemini), pode configurar para
+ser automatico. Veja o README (secao "Analise por IA").
+
+IMPORTANTE
+----------
+
+- Este programa NAO faz propostas, NAO da lances e NAO compra nada.
+- O site da Caixa tem protecao anti-robos. Se aparecer uma mensagem de bloqueio,
+  espere alguns minutos e tente de novo (nao fique clicando sem parar).
+- Antes de arrematar qualquer imovel, confirme tudo com um ADVOGADO. O programa
+  apenas organiza informacoes publicas.

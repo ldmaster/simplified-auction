@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            slug: linux
+          - os: windows-latest
+            slug: windows
+          - os: macos-14
+            slug: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Build
+        shell: bash
+        run: |
+          uv venv --python 3.12 .venv
+          if [ -f .venv/bin/python ]; then PY=.venv/bin/python; else PY=.venv/Scripts/python.exe; fi
+          uv pip install --python "$PY" -e ".[gui]" "pyinstaller>=6.6,<7"
+          "$PY" -m PyInstaller --onefile --name simplified-auction \
+              --paths src packaging/simplified_auction_entry.py
+          "$PY" -m PyInstaller --windowed --name simplified-auction-gui \
+              --paths src packaging/simplified_auction_gui_entry.py
+
+      - name: Empacotar
+        shell: bash
+        run: |
+          cd dist
+          if [ -d simplified-auction-gui.app ]; then
+            zip -r "../simplified-auction-${{ matrix.slug }}.zip" simplified-auction-gui.app simplified-auction ../COMO-USAR.txt
+          else
+            zip -r "../simplified-auction-${{ matrix.slug }}.zip" simplified-auction-gui simplified-auction ../COMO-USAR.txt || \
+            zip -r "../simplified-auction-${{ matrix.slug }}.zip" simplified-auction-gui.exe simplified-auction.exe ../COMO-USAR.txt
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simplified-auction-${{ matrix.slug }}
+          path: simplified-auction-${{ matrix.slug }}.zip
+
+      - name: Publicar Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: simplified-auction-${{ matrix.slug }}.zip
