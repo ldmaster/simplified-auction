@@ -12,6 +12,8 @@ from ..analyze import AIError, prepare, run_api, store_result
 from ..models import STAGE_LABELS, STAGES
 from ..sources.caixa_detail import fetch_detail
 from ..viability import ViabilityInput, compute
+from .maps import MapPanel
+from .photos import PhotoGallery
 
 if TYPE_CHECKING:
     from .app import AuctionApp
@@ -43,7 +45,6 @@ class DetailView:
         self.title.pack(side="left")
         ttk.Button(top, text="Enriquecer ficha", command=self._enrich).pack(side="right")
         ttk.Button(top, text="Baixar matricula", command=self._download_matricula).pack(side="right", padx=4)
-        ttk.Button(top, text="Carregar fotos", command=self._load_current_photos).pack(side="right", padx=4)
         ttk.Button(top, text="Abrir no site", command=self._open_site).pack(side="right")
         ttk.Button(top, text="Analisar com IA", command=self._analyze).pack(side="right", padx=4)
 
@@ -99,23 +100,29 @@ class DetailView:
         self.viability_result = ttk.Label(viability, text="", foreground="#0a5")
         self.viability_result.grid(row=3, column=1, columnspan=3, sticky="w")
 
-        checklist = ttk.LabelFrame(right, text="Due diligence (duplo clique alterna)")
-        checklist.pack(fill="both", expand=True, pady=6)
+        inner = ttk.Notebook(right)
+        inner.pack(fill="both", expand=True, pady=6)
+
+        checklist = ttk.Frame(inner)
         self.check = ttk.Treeview(
             checklist, columns=("item", "status"), show="headings", height=12
         )
         self.check.heading("item", text="Item")
         self.check.heading("status", text="Status")
-        self.check.column("item", width=320)
-        self.check.column("status", width=100)
+        self.check.column("item", width=300)
+        self.check.column("status", width=90)
         self.check.pack(fill="both", expand=True)
         self.check.bind("<Double-1>", self._toggle_check)
+        inner.add(checklist, text="Due diligence")
 
-        photos = ttk.LabelFrame(right, text="Fotos")
-        photos.pack(fill="x")
-        self.photos_frame = ttk.Frame(photos)
-        self.photos_frame.pack(fill="x")
-        self._photo_refs: list[Any] = []
+        media = ttk.Frame(inner)
+        self.gallery = PhotoGallery(media, self.app)
+        self.gallery.frame.pack(fill="both", expand=True)
+        self.map_panel = MapPanel(media, self.app)
+        self.map_panel.frame.pack(fill="x", pady=(6, 0))
+        inner.add(media, text="Fotos & mapa")
+
+        self.media_tabs = inner
 
     # ------------------------------------------------------------------ render
 
@@ -132,7 +139,8 @@ class DetailView:
         self._load_pipeline()
         self._load_checklist()
         self._prefill_viability(row)
-        self._clear_photos()
+        self.gallery.set_urls(list((self._detail or {}).get("fotos") or []))
+        self.map_panel.set_property(row, self._detail)
 
     def _render(self, row: dict[str, Any], detail: dict[str, Any] | None) -> None:
         lines = [
@@ -227,8 +235,7 @@ class DetailView:
             with HttpClient(cfg.http) as client:
                 return fetch_detail(client, imovel_id, browser=cfg.http.browser)
 
-        self.app.status.set(f"Buscando ficha de {imovel_id}...")
-        self.app.run_async(work, self._on_enriched)
+        self.app.run_async(work, self._on_enriched, label=f"Buscando ficha de {imovel_id}")
 
     def _download_matricula(self) -> None:
         if not self.imovel_id:
@@ -248,18 +255,23 @@ class DetailView:
             with HttpClient(cfg.http) as client:
                 return caixa_docs.save_matricula(client, store, uf=uf, imovel_id=imovel_id)
 
-        self.app.status.set(f"Baixando matricula de {imovel_id}...")
-        self.app.run_async(work, self._on_matricula)
+        self.app.run_async(work, self._on_matricula, label=f"Baixando matricula de {imovel_id}")
 
     def _on_matricula(self, result: Any) -> None:
         if isinstance(result, Exception):
-            messagebox.showerror("Matricula", str(result))
+            self.app.status.set(f"Falhou ao baixar a matricula: {result}")
+            messagebox.showerror(
+                "Matricula", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+            )
             return
         self.app.status.set(f"Matricula salva: {result}")
 
     def _on_enriched(self, result: Any) -> None:
         if isinstance(result, Exception):
-            messagebox.showerror("Enriquecer", str(result))
+            self.app.status.set(f"Falhou ao buscar a ficha: {result}")
+            messagebox.showerror(
+                "Enriquecer", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+            )
             return
         self.app.store.save_detail(result)
         self.show(str(result.imovel_id))
@@ -357,20 +369,21 @@ class DetailView:
                     "para ca (cole abaixo e clique em 'Salvar analise').",
                 )
                 return
-            self.app.status.set("Consultando a IA...")
-
             def work() -> Any:
                 return run_api(ai, prompt)
 
             def done(result: Any) -> None:
                 if isinstance(result, Exception):
-                    messagebox.showerror("IA", str(result))
+                    self.app.status.set(f"Falhou a chamada de IA: {result}")
+                    messagebox.showerror(
+                        "IA", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+                    )
                     return
                 text.delete("1.0", "end")
                 text.insert("1.0", str(result))
                 self.app.status.set("Resposta recebida. Revise e salve.")
 
-            self.app.run_async(work, done)
+            self.app.run_async(work, done, label="Consultando a IA")
 
         def save() -> None:
             assert self.imovel_id is not None
@@ -394,52 +407,3 @@ class DetailView:
         ttk.Button(buttons, text="Salvar analise", command=save).pack(side="left")
         ttk.Button(buttons, text="Fechar", command=window.destroy).pack(side="right")
 
-    # ------------------------------------------------------------------ fotos
-
-    def _clear_photos(self) -> None:
-        for child in self.photos_frame.winfo_children():
-            child.destroy()
-        self._photo_refs = []
-
-    def _load_current_photos(self) -> None:
-        detail = getattr(self, "_detail", None) or {}
-        urls = list(detail.get("fotos") or [])
-        if not urls:
-            messagebox.showinfo("Fotos", "Sem fotos; enriqueça a ficha primeiro.")
-            return
-        self._load_photos(urls)
-
-    def _load_photos(self, urls: list[str]) -> None:
-        from .images import PILLOW_AVAILABLE, thumbnail, to_photoimage
-
-        if not PILLOW_AVAILABLE:
-            ttk.Label(self.photos_frame, text="Pillow nao instalado (pip install .[gui])").pack()
-            return
-        cfg = self.app.cfg
-
-        def work() -> Any:
-            from ..http import HttpClient
-
-            out: list[Any] = []
-            with HttpClient(cfg.http) as client:
-                for url in urls[:6]:
-                    try:
-                        image = thumbnail(client.get_bytes(url))
-                    except Exception:
-                        image = None
-                    if image is not None:
-                        out.append(image)
-            return out
-
-        def done(result: Any) -> None:
-            if isinstance(result, Exception):
-                return
-            self._clear_photos()
-            for image in result:
-                photo = to_photoimage(image)
-                if photo is None:
-                    continue
-                self._photo_refs.append(photo)
-                ttk.Label(self.photos_frame, image=photo).pack(side="left", padx=2)
-
-        self.app.run_async(work, done)

@@ -97,12 +97,14 @@ class DocumentsView:
                 store.upsert_document(doc)
             return len(docs)
 
-        self.app.status.set(f"Consultando publicacoes de {uf} {mes:02d}/{ano}...")
-        self.app.run_async(work, self._on_listed)
+        self.app.run_async(work, self._on_listed, label=f"Consultando editais de {uf} {mes:02d}/{ano}")
 
     def _on_listed(self, result: Any) -> None:
         if isinstance(result, Exception):
-            messagebox.showerror("Editais", str(result))
+            self.app.status.set(f"Falhou ao consultar editais: {result}")
+            messagebox.showerror(
+                "Editais", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+            )
             return
         self.app.status.set(f"{result} documento(s) encontrados.")
         self.refresh()
@@ -130,12 +132,14 @@ class DocumentsView:
                     count += 1
             return count
 
-        self.app.status.set("Baixando PDFs...")
-        self.app.run_async(work, self._on_fetched)
+        self.app.run_async(work, self._on_fetched, label=f"Baixando {tipo} {mes:02d}/{ano}")
 
     def _on_fetched(self, result: Any) -> None:
         if isinstance(result, Exception):
-            messagebox.showerror("Editais", str(result))
+            self.app.status.set(f"Falhou ao baixar editais: {result}")
+            messagebox.showerror(
+                "Editais", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+            )
             return
         self.app.status.set(f"{result} PDF(s) baixados.")
         self.refresh()

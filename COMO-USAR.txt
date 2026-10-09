@@ -40,9 +40,11 @@ Aba "Oportunidades":
 Aba "Ficha":
   - Mostra os dados do imovel e a ficha completa da Caixa.
   - "Baixar matricula": salva o PDF da matricula.
-  - "Carregar fotos": mostra as fotos do imovel.
+  - Sub-aba "Due diligence": checklist para marcar o que voce ja conferiu.
+  - Sub-aba "Fotos & mapa": as fotos do imovel (miniatura, previa grande,
+    anterior/proximo, salvar como) e a localizacao (botoes "Google Maps" e
+    "Rota"; e "Localizar no mapa" mostra o imovel num mapa).
   - "Viabilidade": calcule o custo real (comissao, ITBI, reforma, dividas...).
-  - "Due diligence": checklist para marcar o que voce ja conferiu.
   - "Analisar com IA": veja abaixo.
 
 Aba "Pipeline":

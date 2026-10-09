@@ -4,8 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo ">> criando venv com Python gerenciado pelo uv (tem Tkinter)"
-uv venv --python-preference only-managed --python 3.12 .venv-mac
-uv pip install --python .venv-mac/bin/python -e ".[gui]" "pyinstaller>=6.6,<7"
+uv venv --clear --python-preference only-managed --python 3.12 .venv-mac
+uv pip install --python .venv-mac/bin/python -e ".[gui,maps]" "pyinstaller>=6.6,<7"
 
 echo ">> gerando a CLI (dist/simplified-auction)"
 .venv-mac/bin/pyinstaller --onefile --name simplified-auction \

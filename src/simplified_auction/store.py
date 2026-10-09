@@ -128,6 +128,14 @@ CREATE TABLE IF NOT EXISTS snapshots (
     rows_count INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS geocode (
+    imovel_id  TEXT PRIMARY KEY,
+    lat        REAL NOT NULL,
+    lon        REAL NOT NULL,
+    query      TEXT NOT NULL DEFAULT '',
+    fetched_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_properties_uf ON properties(uf);
 CREATE INDEX IF NOT EXISTS idx_properties_desconto ON properties(desconto);
 CREATE INDEX IF NOT EXISTS idx_photos_status_placeholder ON details(imovel_id);
@@ -362,12 +370,32 @@ class Store:
             "analises": int(cur.execute("SELECT COUNT(*) FROM analyses").fetchone()[0]),
         }
 
+    def get_geocode(self, imovel_id: str) -> dict[str, Any] | None:
+        """Retorna as coordenadas em cache de um imovel, se houver."""
+        row = self._conn.execute(
+            "SELECT * FROM geocode WHERE imovel_id=?", (imovel_id,)
+        ).fetchone()
+        return dict(row) if row is not None else None
+
+    def save_geocode(self, imovel_id: str, lat: float, lon: float, query: str) -> None:
+        """Guarda as coordenadas de um imovel (cache de geocodificacao)."""
+        self._conn.execute(
+            """
+            INSERT INTO geocode (imovel_id, lat, lon, query, fetched_at) VALUES (?,?,?,?,?)
+            ON CONFLICT(imovel_id) DO UPDATE SET
+                lat=excluded.lat, lon=excluded.lon, query=excluded.query,
+                fetched_at=excluded.fetched_at
+            """,
+            (imovel_id, lat, lon, query, now_iso()),
+        )
+        self._conn.commit()
+
     def get_property(self, imovel_id: str) -> dict[str, Any] | None:
         """Retorna um imovel (com estagio do pipeline) ou ``None``."""
         row = self._conn.execute(
             """
             SELECT p.*, COALESCE(pl.stage, 'novo') AS stage, pl.decisao AS decisao,
-                   (d.imovel_id IS NOT NULL) AS detalhado
+                   (d.imovel_id IS NOT NULL) AS detalhado, d.fotos AS fotos, d.cep AS cep
             FROM properties p
             LEFT JOIN pipeline pl ON pl.imovel_id = p.imovel_id
             LEFT JOIN details d ON d.imovel_id = p.imovel_id
@@ -450,7 +478,7 @@ class Store:
         order = order_by if order_by in _ALLOWED_ORDER else "desconto DESC"
         sql = f"""
             SELECT p.*, COALESCE(pl.stage,'novo') AS stage, pl.decisao AS decisao,
-                   (d.imovel_id IS NOT NULL) AS detalhado
+                   (d.imovel_id IS NOT NULL) AS detalhado, d.fotos AS fotos
             FROM properties p
             LEFT JOIN pipeline pl ON pl.imovel_id = p.imovel_id
             LEFT JOIN details d ON d.imovel_id = p.imovel_id

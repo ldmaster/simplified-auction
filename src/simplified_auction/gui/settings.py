@@ -30,6 +30,7 @@ class SettingsView:
         self.counts = ttk.Label(info, text="")
         self.counts.pack(anchor="w", padx=6, pady=4)
         ttk.Label(info, text=f"Banco: {self.app.cfg.db_path}").pack(anchor="w", padx=6)
+        ttk.Label(info, text=f"Log: {self.app.log_path()}").pack(anchor="w", padx=6)
         ai = self.app.ai_config()
         mode = "API" if ai.has_api else "manual (sem chave)"
         ttk.Label(
@@ -72,12 +73,14 @@ class SettingsView:
             with HttpClient(cfg.http) as client:
                 return sync_lista(store, client, uf)
 
-        self.app.status.set(f"Sincronizando lista oficial de {uf}...")
-        self.app.run_async(work, self._on_sync)
+        self.app.run_async(work, self._on_sync, label=f"Sincronizando lista oficial de {uf}")
 
     def _on_sync(self, result: Any) -> None:
         if isinstance(result, Exception):
-            messagebox.showerror("Sync", str(result))
+            self.app.status.set(f"Falhou ao sincronizar: {result}")
+            messagebox.showerror(
+                "Sincronizar", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+            )
             return
         up = result.upsert
         self.app.status.set(
@@ -101,12 +104,14 @@ class SettingsView:
             with HttpClient(cfg.http) as client:
                 return enrich(store, client, uf=None if uf == "geral" else uf, min_desconto=min_desc, limit=50)
 
-        self.app.status.set("Enriquecendo fichas...")
-        self.app.run_async(work, self._on_enrich)
+        self.app.run_async(work, self._on_enrich, label="Enriquecendo fichas")
 
     def _on_enrich(self, result: Any) -> None:
         if isinstance(result, Exception):
-            messagebox.showerror("Enrich", str(result))
+            self.app.status.set(f"Falhou ao enriquecer: {result}")
+            messagebox.showerror(
+                "Enriquecer", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+            )
             return
         self.app.status.set(f"{result.fetched}/{result.requested} fichas | falhas {len(result.failed)}")
         self.app.refresh_all()

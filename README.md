@@ -45,7 +45,7 @@ saem sem depender de burlar proteção.
 ```bash
 cd /Users/lucasdavi/IA/simplified-auction
 uv venv --python-preference only-managed --python 3.12 .venv
-uv pip install --python .venv/bin/python -e ".[gui,dev]"
+uv pip install --python .venv/bin/python -e ".[gui,maps,dev]"
 ```
 
 Opcional (modo navegador para as páginas `/sistema/`):
@@ -91,10 +91,23 @@ uv pip install --python .venv/bin/python -e ".[browser]"
 .venv/bin/python -m simplified_auction.gui
 ```
 
-Abas: **Oportunidades** (tabela por score, filtros, exportar CSV),
-**Ficha** (dados + ficha, viabilidade, due diligence, fotos, baixar matrícula,
-analisar com IA), **Pipeline**, **Editais**, **Config** (sincronizar/enriquecer)
+Abas: **Oportunidades** (tabela por score, filtros, exportar CSV, coluna de
+fotos), **Ficha**, **Pipeline**, **Editais**, **Config** (sincronizar/enriquecer)
 e **IA** (cadastro de provedores).
+
+A aba **Ficha** tem: dados do imóvel, ficha da Caixa, calculadora de viabilidade
+e, em sub-abas, **Due diligence** e **Fotos & mapa**.
+
+### Fotos e mapa
+
+- **Fotos:** a ficha lista as fotos do imóvel (contagem também aparece na aba
+  Oportunidades). A galeria mostra miniaturas, prévia grande, navegação
+  ◀/▶, **Abrir no navegador** e **Salvar como…**. As fotos vêm do
+  `/fotos/` (asset estático, sem anti-bot) depois que a ficha é enriquecida.
+- **Mapa:** botões **Google Maps** e **Rota** abrem o endereço no navegador
+  (sem chave de API). Com o extra `maps` instalado, **Localizar no mapa** mostra
+  o imóvel num mapa embutido (tiles do OpenStreetMap), geocodificando via
+  Nominatim com cache no banco (evita repetir a consulta).
 
 ## Análise por IA (híbrida, nunca automática)
 

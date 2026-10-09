@@ -207,8 +207,11 @@ class ProvidersView:
         def done(result: Any) -> None:
             if isinstance(result, Exception):
                 self.status.configure(text=f"Falhou: {result}", foreground="#b00")
+                messagebox.showerror(
+                    "Teste de IA", f"{result}\n\nDetalhes no log:\n{self.app.log_path()}"
+                )
                 return
             reply = " ".join(str(result).split())[:200]
             self.status.configure(text=f"OK: {reply}", foreground="#0a5")
 
-        self.app.run_async(work, done)
+        self.app.run_async(work, done, label="Testando conexao com a IA")

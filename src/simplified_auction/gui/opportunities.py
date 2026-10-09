@@ -23,9 +23,16 @@ COLUMNS = (
     ("cidade", "Cidade", 140),
     ("bairro", "Bairro", 140),
     ("tipo", "Tipo", 90),
+    ("fotos", "Fotos", 55),
     ("modalidade", "Modalidade", 140),
     ("stage", "Estagio", 100),
 )
+
+
+def photo_count(row: dict[str, Any]) -> int:
+    """Quantidade de fotos conhecidas de um imovel."""
+    fotos = row.get("fotos")
+    return len(str(fotos).split("|")) if fotos else 0
 
 EXPORT_FIELDS = [
     "imovel_id", "uf", "cidade", "bairro", "endereco", "tipo", "modalidade",
@@ -94,6 +101,7 @@ class OpportunitiesView:
                     f"{float(row['preco'] or 0):,.0f}",
                     f"{float(row['valor_avaliacao'] or 0):,.0f}",
                     row["uf"], row["cidade"], row["bairro"], row["tipo"],
+                    photo_count(row) or "",
                     row["modalidade"], row["stage"],
                 ),
             )

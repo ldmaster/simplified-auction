@@ -15,6 +15,7 @@ def main(cfg: config_module.Config | None = None) -> int:
         O codigo de saida.
     """
     import tkinter as tk
+    from tkinter import messagebox
 
     from .app import AuctionApp
 
@@ -22,6 +23,12 @@ def main(cfg: config_module.Config | None = None) -> int:
     root = tk.Tk()
     root.title("simplified-auction — leilao de imoveis Caixa")
     root.geometry("1200x780")
+
+    def _report_error(exc_type: type[BaseException], exc: BaseException, _tb: object) -> None:
+        messagebox.showerror("Erro inesperado", f"{exc_type.__name__}: {exc}")
+
+    root.report_callback_exception = _report_error
+
     app = AuctionApp(root, config)
     try:
         root.mainloop()
