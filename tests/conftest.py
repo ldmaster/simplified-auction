@@ -22,3 +22,8 @@ def lista_ac_bytes() -> bytes:
 @pytest.fixture
 def detalhe_html() -> str:
     return (FIXTURES / "detalhe_10005120.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def docs_lista_html() -> str:
+    return (FIXTURES / "docs_lista.html").read_text(encoding="utf-8")

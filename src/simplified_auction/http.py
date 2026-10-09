@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from .config import HttpConfig
+from .config import HttpConfig, browser_headers
 from .normalize import decode_latin1
 
 
@@ -37,10 +37,7 @@ class HttpClient:
         """
         self._config = config or HttpConfig()
         self._client = httpx.Client(
-            headers={
-                "User-Agent": self._config.user_agent,
-                "Accept-Language": "pt-BR,pt;q=0.9",
-            },
+            headers=browser_headers(self._config.user_agent),
             timeout=self._config.timeout,
             follow_redirects=True,
         )
@@ -121,7 +118,14 @@ class HttpClient:
         """HEAD para checagem barata de mudanca (ETag/Last-Modified)."""
         return self.request("HEAD", url, **kwargs)
 
-    def post_form(self, url: str, data: dict[str, str], **kwargs: Any) -> str:
-        """POST de formulario (endpoints AJAX ``carrega*``) retornando texto."""
+    def post_form(
+        self, url: str, data: dict[str, str], *, encoding: str = "utf-8", **kwargs: Any
+    ) -> str:
+        """POST de formulario (endpoints AJAX ``carrega*``) retornando texto.
+
+        Os endpoints ``/sistema/`` respondem em UTF-8 (o CSV da lista, nao).
+        """
         response = self.request("POST", url, data=data, **kwargs)
-        return decode_latin1(response.content)
+        if encoding == "cp1252":
+            return decode_latin1(response.content)
+        return response.content.decode(encoding, errors="replace")

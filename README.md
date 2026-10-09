@@ -23,16 +23,21 @@ comarca, formas de pagamento, regras de despesas, fotos) e a matrícula em PDF �
 derivável do id — então os documentos mais valiosos para a análise jurídica
 saem sem depender de burlar proteção.
 
-### Proteção anti-bot (o que aprendi na prática)
+### Proteção anti-bot (o que foi descoberto na prática)
 
-- O WAF (Radware/ShieldSquare) é **adaptativo por comportamento**: rajadas de
-  requisições disparam um desafio (que passou a valer até para o CSV por alguns
-  minutos). O app já nasce com **rate-limit** (`AUCTION_MIN_INTERVAL`, padrão
-  1,5s), retry com backoff e cache.
-- O WAF **rejeita User-Agent que não comece com `Mozilla/5.0`**. O padrão do app
-  é honesto e identificável, mas nesse formato:
-  `Mozilla/5.0 (compatible; simplified-auction/0.1.0; +https://github.com/ldmaster/simplified-auction)`.
-- Para as páginas `/sistema/` que exigem o desafio JS, há o **modo navegador**
+- É o **Radware Bot Manager** (via `validate.perfdrive.com`), que pontua o
+  **conjunto inteiro de cabeçalhos** — não só o User-Agent. Testes reais:
+  - UA com o nome do app → **bloqueado**;
+  - só o UA de Chrome (sem os demais cabeçalhos) → **bloqueado**;
+  - UA de Chrome **+** `Accept`, `Accept-Language`, `Sec-Fetch-*`,
+    `Upgrade-Insecure-Requests` → **passa**.
+- Por isso o cliente envia, por padrão, um **fingerprint de navegador**
+  (`config.browser_headers`). Dá para trocar o UA com `AUCTION_USER_AGENT`.
+- Também é **adaptativo por comportamento/ritmo**: rajadas de requisições
+  disparam um bloqueio temporário (que pode atingir até o CSV por alguns
+  minutos). O app nasce com **rate-limit** (`AUCTION_MIN_INTERVAL`, 1,5s),
+  retry com backoff e cache. Em bloqueio, **espere alguns minutos** — não insista.
+- Para páginas `/sistema/` que exigem o desafio JS existe o **modo navegador**
   opcional (Playwright/Chromium): `AUCTION_BROWSER=1` ou `--browser`.
 
 ## Instalação (desenvolvimento)
@@ -114,7 +119,7 @@ export AUCTION_AI_KEY=sk-...
 | --- | --- | --- |
 | `AUCTION_HOME` | diretório de dados do SO | onde ficam `auction.db` e os documentos |
 | `AUCTION_MIN_INTERVAL` | `1.5` | segundos entre requisições (rate-limit) |
-| `AUCTION_USER_AGENT` | UA compatível Mozilla | identificar/ajustar o cliente |
+| `AUCTION_USER_AGENT` | UA de navegador | identificar/ajustar o cliente |
 | `AUCTION_BROWSER` | `0` | `1` liga o modo navegador (Playwright) |
 | `AUCTION_AI_*` | — | provedor, modelo e chave da IA |
 

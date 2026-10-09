@@ -6,12 +6,41 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import __version__, paths
+from . import paths
 
+#: User-Agent padrao. O WAF da Caixa pontua o conjunto de cabecalhos e bloqueia
+#: clientes que nao parecem navegador (inclusive UAs com o nome do app); por
+#: isso usamos um UA de navegador. Configure ``AUCTION_USER_AGENT`` para mudar.
 DEFAULT_USER_AGENT = (
-    f"Mozilla/5.0 (compatible; simplified-auction/{__version__}; "
-    "+https://github.com/ldmaster/simplified-auction)"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
+
+
+def browser_headers(user_agent: str) -> dict[str, str]:
+    """Cabecalhos que imitam um navegador (necessarios para passar pelo WAF).
+
+    Args:
+        user_agent: User-Agent a enviar.
+
+    Returns:
+        O dicionario de cabecalhos padrao.
+    """
+    return {
+        "User-Agent": user_agent,
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,"
+            "image/avif,image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Connection": "keep-alive",
+    }
 
 
 @dataclass(frozen=True, slots=True)
