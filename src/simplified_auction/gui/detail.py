@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import tkinter as tk
 import webbrowser
 from tkinter import messagebox, scrolledtext, ttk
@@ -12,6 +11,7 @@ from ..analyze import AIError, prepare, run_api, store_result
 from ..models import STAGE_LABELS, STAGES
 from ..sources.caixa_detail import fetch_detail
 from ..viability import ViabilityInput, compute
+from .analysis import AnalysisView
 from .maps import MapPanel
 from .photos import PhotoGallery
 
@@ -43,6 +43,8 @@ class DetailView:
         top.pack(fill="x", padx=6, pady=6)
         self.title = ttk.Label(top, text="Selecione um imovel na aba Oportunidades", font=("", 13, "bold"))
         self.title.pack(side="left")
+        self.semaforo_label = tk.Label(top, text="", font=("", 11, "bold"), padx=8)
+        self.semaforo_label.pack(side="left", padx=10)
         ttk.Button(top, text="Enriquecer ficha", command=self._enrich).pack(side="right")
         ttk.Button(top, text="Baixar matricula", command=self._download_matricula).pack(side="right", padx=4)
         ttk.Button(top, text="Abrir no site", command=self._open_site).pack(side="right")
@@ -103,6 +105,9 @@ class DetailView:
         inner = ttk.Notebook(right)
         inner.pack(fill="both", expand=True, pady=6)
 
+        self.analysis_view = AnalysisView(inner, self.app)
+        inner.add(self.analysis_view.frame, text="Analise IA")
+
         checklist = ttk.Frame(inner)
         self.check = ttk.Treeview(
             checklist, columns=("item", "status"), show="headings", height=12
@@ -139,8 +144,23 @@ class DetailView:
         self._load_pipeline()
         self._load_checklist()
         self._prefill_viability(row)
+        self.analysis_view.set_imovel(imovel_id)
+        self._update_semaforo_badge()
         self.gallery.set_urls(list((self._detail or {}).get("fotos") or []))
         self.map_panel.set_property(row, self._detail)
+
+    def _update_semaforo_badge(self) -> None:
+        """Pinta o selo de semaforo da analise mais recente no cabecalho."""
+        cores = {"verde": "#1e9e5a", "amarelo": "#c98a00", "vermelho": "#c0392b"}
+        semaforo = self.analysis_view.latest_semaforo()
+        if semaforo in cores:
+            self.semaforo_label.configure(
+                text=f" IA: {semaforo.upper()} ", background=cores[semaforo], foreground="white"
+            )
+        else:
+            self.semaforo_label.configure(
+                text=" sem analise IA ", background="#e8e8e8", foreground="#666"
+            )
 
     def _render(self, row: dict[str, Any], detail: dict[str, Any] | None) -> None:
         lines = [
@@ -435,7 +455,11 @@ class DetailView:
                 model=ai.model, prompt=prompt, raw=raw,
             )
             self.app.status.set(f"Analise salva: semaforo {result.get('semaforo', 'n/d')}.")
-            messagebox.showinfo("Analise", json.dumps(result, ensure_ascii=False, indent=2)[:2000])
+            self.analysis_view.set_imovel(self.imovel_id)
+            self._update_semaforo_badge()
+            self.media_tabs.select(self.analysis_view.frame)
+            self.app.notebook.select(self.frame)
+            window.destroy()
 
         buttons = ttk.Frame(window)
         buttons.pack(fill="x", padx=6, pady=(0, 6))

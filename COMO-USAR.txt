@@ -41,6 +41,9 @@ Aba "Ficha":
   - Mostra os dados do imovel e a ficha completa da Caixa.
   - "Baixar matricula": salva o PDF da matricula.
   - Sub-aba "Due diligence": checklist para marcar o que voce ja conferiu.
+  - Sub-aba "Analise IA": depois de analisar, o resultado aparece aqui de forma
+    legivel e colorida (semaforo, riscos por gravidade, checklist por status).
+    No topo da Ficha aparece um selo com o semaforo da ultima analise.
   - Sub-aba "Fotos & mapa": as fotos do imovel (miniatura, previa grande,
     anterior/proximo, salvar como) e a localizacao (botoes "Google Maps" e
     "Rota"; e "Localizar no mapa" mostra o imovel num mapa).

@@ -96,7 +96,16 @@ fotos), **Ficha**, **Pipeline**, **Editais**, **Config** (sincronizar/enriquecer
 e **IA** (cadastro de provedores).
 
 A aba **Ficha** tem: dados do imóvel, ficha da Caixa, calculadora de viabilidade
-e, em sub-abas, **Due diligence** e **Fotos & mapa**.
+e, em sub-abas, **Análise IA**, **Due diligence** e **Fotos & mapa**.
+
+### Análise IA (tela com cores)
+
+Depois de rodar a análise, o resultado aparece **renderizado** (não em JSON):
+semáforo colorido (verde/amarelo/vermelho), **riscos** com a gravidade destacada
+(alta/média/baixa), **checklist** com status colorido, além de ônus e gravames,
+prazos, débitos e ocupação. O cabeçalho da Ficha mostra o **selo do semáforo** da
+última análise, há um seletor para consultar análises anteriores e um botão
+**Ver JSON** para o dado bruto.
 
 ### Fotos e mapa
 
