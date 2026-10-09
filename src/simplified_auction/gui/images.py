@@ -38,3 +38,19 @@ def to_photoimage(image: Any) -> Any:
     if image is None or not PILLOW_AVAILABLE:
         return None
     return ImageTk.PhotoImage(image)
+
+
+def app_icon(size: int = 256) -> Any:
+    """Gera o ``PhotoImage`` do icone do app para a janela.
+
+    Args:
+        size: Lado do icone em pixels.
+
+    Returns:
+        O ``PhotoImage`` ou ``None`` se o Pillow faltar.
+    """
+    if not PILLOW_AVAILABLE:
+        return None
+    from ..icon import render_icon
+
+    return to_photoimage(render_icon(size))

@@ -11,3 +11,10 @@ build/
 .ruff_cache/
 .DS_Store
 *.log
+
+# Icones gerados por scripts/make_icon.py
+packaging/icon.png
+packaging/icon.ico
+packaging/icon.icns
+packaging/icon.iconset/
+packaging/preview_*.png

@@ -16,10 +16,13 @@ jobs:
         include:
           - os: ubuntu-latest
             slug: linux
+            icon: packaging/icon.png
           - os: windows-latest
             slug: windows
+            icon: packaging/icon.ico
           - os: macos-14
             slug: macos
+            icon: packaging/icon.icns
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -30,11 +33,12 @@ jobs:
         run: |
           uv venv --python 3.12 .venv
           if [ -f .venv/bin/python ]; then PY=.venv/bin/python; else PY=.venv/Scripts/python.exe; fi
-          uv pip install --python "$PY" -e ".[gui]" "pyinstaller>=6.6,<7"
-          "$PY" -m PyInstaller --onefile --name simplified-auction \
+          uv pip install --python "$PY" -e ".[gui,maps]" "pyinstaller>=6.6,<7"
+          "$PY" scripts/make_icon.py
+          "$PY" -m PyInstaller --noconfirm --onefile --name simplified-auction \
               --paths src packaging/simplified_auction_entry.py
-          "$PY" -m PyInstaller --windowed --name simplified-auction-gui \
-              --paths src packaging/simplified_auction_gui_entry.py
+          "$PY" -m PyInstaller --noconfirm --windowed --name simplified-auction-gui \
+              --paths src --icon "${{ matrix.icon }}" packaging/simplified_auction_gui_entry.py
 
       - name: Empacotar
         shell: bash

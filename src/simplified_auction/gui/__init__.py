@@ -18,11 +18,16 @@ def main(cfg: config_module.Config | None = None) -> int:
     from tkinter import messagebox
 
     from .app import AuctionApp
+    from .images import app_icon
 
     config = cfg or config_module.load()
     root = tk.Tk()
     root.title("simplified-auction — leilao de imoveis Caixa")
     root.geometry("1200x780")
+
+    icon = app_icon()
+    if icon is not None:
+        root.iconphoto(True, icon)
 
     def _report_error(exc_type: type[BaseException], exc: BaseException, _tb: object) -> None:
         messagebox.showerror("Erro inesperado", f"{exc_type.__name__}: {exc}")

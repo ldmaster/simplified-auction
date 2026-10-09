@@ -179,6 +179,15 @@ cd /Users/lucasdavi/IA/simplified-auction
 open dist/simplified-auction-gui.app
 ```
 
+O ícone é desenhado em código (`src/simplified_auction/icon.py`) e exportado pelo
+próprio build via `scripts/make_icon.py` (PNG, ICO e ICNS). Assim, janela e
+binários usam sempre o mesmo ícone, sem arquivos binários versionados. Para
+regerar só o ícone:
+
+```bash
+.venv/bin/python scripts/make_icon.py
+```
+
 ## Releases
 
 Binários **públicos** (sem login) em:
